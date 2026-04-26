@@ -542,31 +542,95 @@ export default function CoverQuiz() {
             borderTop: "1px solid var(--c-border)", borderBottom: "1px solid var(--c-border)",
             padding: "16px 0", width: "100%", justifyContent: "center",
           }}>
-            <Stat label="VUS"     value={history.length} />
+            <Stat label="TROUVÉS" value={history.filter((a) => a.foundAlbum).length} />
             <Stat label="PASSÉS"  value={skipped} />
-            <Stat label="PARFAITS" value={history.filter((a) => a.foundAlbum).length} />
           </div>
 
-          {/* Last seen covers */}
+          {/* Tableau covers trouvées / passées */}
           {history.length > 0 && (
             <div style={{ width: "100%" }}>
-              <p style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-muted)", marginBottom: 10 }}>
-                DERNIERS ALBUMS
-              </p>
-              <div style={{
-                display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 6,
-              }}>
-                {history.slice(-12).map((a) => (
-                  <div key={a.id} style={{
-                    aspectRatio: "1/1", position: "relative",
-                    opacity: a.foundAlbum ? 1 : 0.35,
-                    border: a.foundArtist && a.foundAlbum
-                      ? "1px solid var(--c-gold)" : "1px solid var(--c-border)",
+
+              {/* Trouvées */}
+              {history.filter(a => a.foundAlbum).length > 0 && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 8, marginBottom: 10,
                   }}>
-                    <Image src={a.cover_url} alt={a.album} fill style={{ objectFit: "cover" }} sizes="60px" />
+                    <div style={{ flex: 1, height: 1, background: "var(--c-border)" }} />
+                    <span style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-gold)" }}>
+                      ✓ TROUVÉS — {history.filter(a => a.foundAlbum).length}
+                    </span>
+                    <div style={{ flex: 1, height: 1, background: "var(--c-border)" }} />
                   </div>
-                ))}
-              </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {history.filter(a => a.foundAlbum).map((a) => (
+                      <div key={a.id} style={{
+                        display: "flex", alignItems: "center", gap: 12,
+                        padding: "8px 10px",
+                        background: "rgba(255,214,10,.04)",
+                        border: "1px solid var(--c-gold)",
+                      }}>
+                        <div style={{ position: "relative", width: 44, height: 44, flexShrink: 0 }}>
+                          <Image src={a.cover_url} alt={a.album} fill style={{ objectFit: "cover" }} sizes="44px" />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontSize: 13, fontWeight: 700, color: "var(--c-gold)",
+                            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                          }}>
+                            {a.album}
+                          </div>
+                        </div>
+                        <div style={{
+                          fontFamily: "var(--font-display)", fontSize: 18, color: "var(--c-gold)",
+                        }}>
+                          +1
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Passées */}
+              {history.filter(a => !a.foundAlbum).length > 0 && (
+                <div>
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 8, marginBottom: 10,
+                  }}>
+                    <div style={{ flex: 1, height: 1, background: "var(--c-border)" }} />
+                    <span style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-muted)" }}>
+                      ✗ PASSÉS — {history.filter(a => !a.foundAlbum).length}
+                    </span>
+                    <div style={{ flex: 1, height: 1, background: "var(--c-border)" }} />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {history.filter(a => !a.foundAlbum).map((a) => (
+                      <div key={a.id} style={{
+                        display: "flex", alignItems: "center", gap: 12,
+                        padding: "8px 10px",
+                        background: "var(--c-surface)",
+                        border: "1px solid var(--c-border)",
+                        opacity: 0.6,
+                      }}>
+                        <div style={{ position: "relative", width: 44, height: 44, flexShrink: 0 }}>
+                          <Image src={a.cover_url} alt={a.album} fill style={{ objectFit: "cover", filter: "grayscale(100%)" }} sizes="44px" />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontSize: 13, fontWeight: 700, color: "var(--c-text)",
+                            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                          }}>
+                            {a.album}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 11, color: "var(--c-muted)" }}>—</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
             </div>
           )}
 
