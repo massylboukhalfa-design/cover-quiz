@@ -1,0 +1,225 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --c-bg:      #080808;
+  --c-surface: #111116;
+  --c-border:  #1e1e2a;
+  --c-accent:  #ff2d55;
+  --c-gold:    #ffd60a;
+  --c-cyan:    #00e5ff;
+  --c-text:    #e8e8e8;
+  --c-muted:   #444455;
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-mono:    'IBM Plex Mono', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font-mono);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Grain overlay on body */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.35;
+}
+
+/* Scanlines */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.08) 2px,
+    rgba(0,0,0,0.08) 4px
+  );
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* ── Animations ── */
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes glitch {
+  0%   { clip-path: inset(80% 0 0 0);   transform: translate(-4px, 0); }
+  10%  { clip-path: inset(10% 0 70% 0); transform: translate(4px, 0); }
+  20%  { clip-path: inset(50% 0 30% 0); transform: translate(-2px, 0); }
+  30%  { clip-path: inset(20% 0 60% 0); transform: translate(2px, 0); }
+  40%  { clip-path: inset(90% 0 1% 0);  transform: translate(-4px, 0); }
+  50%  { clip-path: inset(40% 0 40% 0); transform: translate(0); }
+  60%  { clip-path: inset(10% 0 80% 0); transform: translate(3px, 0); }
+  70%  { clip-path: inset(60% 0 20% 0); transform: translate(-3px, 0); }
+  80%  { clip-path: inset(30% 0 50% 0); transform: translate(1px, 0); }
+  90%  { clip-path: inset(70% 0 10% 0); transform: translate(-1px, 0); }
+  100% { clip-path: inset(0% 0 95% 0);  transform: translate(0); }
+}
+
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20%     { transform: translateX(-6px); }
+  40%     { transform: translateX(6px); }
+  60%     { transform: translateX(-4px); }
+  80%     { transform: translateX(4px); }
+}
+
+@keyframes popIn {
+  0%   { transform: scale(0.85); opacity: 0; }
+  60%  { transform: scale(1.04); }
+  100% { transform: scale(1);    opacity: 1; }
+}
+
+@keyframes timerPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(255,45,85,0.5); }
+  50%     { box-shadow: 0 0 0 8px rgba(255,45,85,0); }
+}
+
+@keyframes revealFlash {
+  0%   { background: rgba(255,214,10,0.3); }
+  100% { background: transparent; }
+}
+
+@keyframes countdownBig {
+  0%   { transform: scale(1.6); opacity: 0; }
+  20%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: scale(0.8); opacity: 0; }
+}
+
+.animate-fadeUp   { animation: fadeUp .5s ease both; }
+.animate-popIn    { animation: popIn .4s cubic-bezier(.34,1.56,.64,1) both; }
+.animate-shake    { animation: shake .35s ease; }
+.animate-flash    { animation: revealFlash .6s ease; }
+.animate-countdown { animation: countdownBig .9s ease both; }
+
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+
+/* ── Glitch title ── */
+.glitch {
+  position: relative;
+  color: var(--c-text);
+}
+.glitch::before,
+.glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  animation: glitch 3s infinite linear alternate-reverse;
+}
+.glitch::before { color: var(--c-cyan);   left: 2px;  animation-delay: 0s; }
+.glitch::after  { color: var(--c-accent); left: -2px; animation-delay: .15s; }
+
+/* ── Pill buttons ── */
+.pill {
+  padding: 8px 20px;
+  border-radius: 2px;
+  border: 1px solid var(--c-border);
+  background: transparent;
+  color: var(--c-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .2s;
+}
+.pill:hover    { border-color: var(--c-text); color: var(--c-text); }
+.pill.active   { border-color: var(--c-accent); color: var(--c-accent); background: rgba(255,45,85,.07); }
+
+/* ── CTA button ── */
+.btn-cta {
+  width: 100%;
+  padding: 18px;
+  background: var(--c-accent);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 28px;
+  letter-spacing: 4px;
+  border: none;
+  cursor: pointer;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+  transition: filter .2s, transform .15s;
+}
+.btn-cta:hover   { filter: brightness(1.15); transform: translateY(-1px); }
+.btn-cta:active  { transform: translateY(1px); }
+.btn-cta:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+/* ── Cover image ── */
+.cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: opacity .25s;
+}
+
+/* ── Answer tag ── */
+.answer-tag {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+  font-size: 11px;
+  letter-spacing: 1px;
+  transition: all .25s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 44px;
+}
+.answer-tag.found {
+  border-color: var(--c-gold);
+  color: var(--c-gold);
+  background: rgba(255,214,10,.05);
+  animation: revealFlash .5s ease;
+}
+
+/* ── Input ── */
+.quiz-input {
+  flex: 1;
+  padding: 14px 16px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  color: var(--c-text);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  outline: none;
+  transition: border-color .2s;
+}
+.quiz-input:focus { border-color: var(--c-cyan); }
+.quiz-input::placeholder { color: var(--c-muted); }
+
+.quiz-submit {
+  padding: 14px 20px;
+  background: var(--c-cyan);
+  color: #000;
+  font-family: var(--font-display);
+  font-size: 22px;
+  border: none;
+  cursor: pointer;
+  transition: filter .15s;
+}
+.quiz-submit:hover { filter: brightness(1.1); }
