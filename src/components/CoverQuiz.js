@@ -317,10 +317,11 @@ export default function CoverQuiz() {
     const { data } = await supabase
       .from("scores")
       .select("player, score, genre, created_at")
+      .eq("mode", gameMode)
       .order("score", { ascending: false })
       .limit(10);
     if (data) setLeaderboard(data);
-  }, []);
+  }, [gameMode]);
 
   useEffect(() => {
     if (screen === "end" || screen === "home") fetchLeaderboard();
@@ -333,6 +334,7 @@ export default function CoverQuiz() {
       player: playerName.trim().toUpperCase(),
       score,
       genre,
+      mode: gameMode,
     });
     setSubmitted(true);
     setSubmitting(false);
