@@ -125,6 +125,8 @@ export default function CoverQuiz() {
   const timerRef    = useRef(null);
   const cdRef       = useRef(null);
   const pixelRef    = useRef(null);
+  const canvasRef   = useRef(null);
+  const pixelImgRef = useRef(null);
 
   // ── Load albums ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -202,6 +204,30 @@ export default function CoverQuiz() {
     }, 1000);
     return () => clearInterval(pixelRef.current);
   }, [current?.id, screen, gameMode]); // eslint-disable-line
+
+  // ── Canvas pixelation draw ───────────────────────────────────────────────────
+  const drawPixelated = useCallback((ps) => {
+    const canvas = canvasRef.current;
+    const img    = pixelImgRef.current;
+    if (!canvas || !img || !img.complete || !img.naturalWidth) return;
+    const SIZE = 380;
+    const off  = document.createElement("canvas");
+    off.width  = ps;
+    off.height = ps;
+    const offCtx = off.getContext("2d");
+    offCtx.imageSmoothingEnabled = false;
+    offCtx.drawImage(img, 0, 0, ps, ps);
+    const ctx = canvas.getContext("2d");
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, SIZE, SIZE);
+    ctx.drawImage(off, 0, 0, SIZE, SIZE);
+    setImgReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (gameMode !== "PIXEL") return;
+    drawPixelated(getPixelSize(pixelTimer));
+  }, [pixelTimer, gameMode, drawPixelated]);
 
   // Focus input when game starts
   useEffect(() => {
@@ -594,27 +620,30 @@ export default function CoverQuiz() {
                 </div>
               </div>
             ) : (
-              /* Mode PIXEL — image rendue à basse résolution puis scalée */
-              <div style={{ position: "absolute", inset: 0, overflow: "hidden", opacity: imgReady ? 1 : 0, transition: "opacity .25s" }}>
-                {(() => {
-                  const ps = getPixelSize(pixelTimer);
-                  return (
-                    <img
-                      key={current.id}
-                      src={current.cover_url}
-                      alt="pochette"
-                      onLoad={() => setImgReady(true)}
-                      style={{
-                        display: "block",
-                        width: ps,
-                        height: ps,
-                        imageRendering: "pixelated",
-                        zoom: 380 / ps,
-                      }}
-                    />
-                  );
-                })()}
-              </div>
+              /* Mode PIXEL — canvas pour pixelisation vraie */
+              <>
+                <img
+                  key={current.id}
+                  ref={pixelImgRef}
+                  src={current.cover_url}
+                  alt=""
+                  crossOrigin="anonymous"
+                  onLoad={() => drawPixelated(getPixelSize(pixelTimer))}
+                  style={{ display: "none" }}
+                />
+                <canvas
+                  ref={canvasRef}
+                  width={380}
+                  height={380}
+                  style={{
+                    position: "absolute", inset: 0,
+                    width: "100%", height: "100%",
+                    opacity: imgReady ? 1 : 0,
+                    transition: "opacity .25s",
+                    imageRendering: "pixelated",
+                  }}
+                />
+              </>
             )}
 
             {/* Corner badge */}
