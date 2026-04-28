@@ -438,9 +438,9 @@ export default function CoverQuiz() {
               borderBottom: "1px solid var(--c-border)", padding: "16px 0", width: "100%",
               justifyContent: "center",
             }}>
-              <Stat label="ALBUMS" value={albums.length} />
-              <Stat label="DURÉE"  value="2:00" />
-              <Stat label="MAX"    value={`${albums.length} pts`} />
+              <Stat label="ALBUMS" value={gameMode === "PIXEL" ? 10 : albums.length} />
+              <Stat label="DURÉE"  value={gameMode === "PIXEL" ? "20s/cover" : "2:00"} />
+              <Stat label="MAX"    value={gameMode === "PIXEL" ? "1000 pts" : `${albums.length} pts`} />
             </div>
           )}
 
