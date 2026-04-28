@@ -83,10 +83,21 @@ const fmt = (s) => {
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
+// ── Pixel size from per-album countdown (20s) ────────────────────────────────
+function getPixelSize(t) {
+  if (t > 8) return 8;
+  if (t > 6) return 16;
+  if (t > 4) return 32;
+  if (t > 2) return 64;
+  if (t > 0) return 128;
+  return 380; // full res
+}
+
 export default function CoverQuiz() {
   // screens: home | countdown | game | end
   const [screen, setScreen]       = useState("home");
   const [genre, setGenre]         = useState("ALL");
+  const [gameMode, setGameMode]   = useState("CROP"); // CROP | PIXEL
   const [albums, setAlbums]       = useState([]);
   const [loading, setLoading]     = useState(true);
 
@@ -108,9 +119,12 @@ export default function CoverQuiz() {
   const [submitting, setSubmitting] = useState(false);
   const [leaderboard, setLeaderboard] = useState([]);
 
-  const inputRef  = useRef(null);
-  const timerRef  = useRef(null);
-  const cdRef     = useRef(null);
+  const [pixelTimer, setPixelTimer] = useState(20);
+
+  const inputRef    = useRef(null);
+  const timerRef    = useRef(null);
+  const cdRef       = useRef(null);
+  const pixelRef    = useRef(null);
 
   // ── Load albums ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -174,6 +188,20 @@ export default function CoverQuiz() {
     }, 1000);
     return () => clearInterval(timerRef.current);
   }, [screen]);
+
+  // ── Pixel timer — reset + countdown par album ───────────────────────────────
+  useEffect(() => {
+    if (screen !== "game" || gameMode !== "PIXEL") return;
+    clearInterval(pixelRef.current);
+    setPixelTimer(10);
+    let t = 10;
+    pixelRef.current = setInterval(() => {
+      t--;
+      setPixelTimer(t);
+      if (t <= 0) clearInterval(pixelRef.current);
+    }, 1000);
+    return () => clearInterval(pixelRef.current);
+  }, [current?.id, screen, gameMode]); // eslint-disable-line
 
   // Focus input when game starts
   useEffect(() => {
@@ -323,6 +351,27 @@ export default function CoverQuiz() {
                   key={key}
                   className={`pill ${genre === key ? "active" : ""}`}
                   onClick={() => setGenre(key)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Game mode filter */}
+          <div>
+            <p style={{ color: "var(--c-muted)", fontSize: 11, letterSpacing: 2, textAlign: "center", marginBottom: 12 }}>
+              STYLE D'INDICE
+            </p>
+            <div style={{ display: "flex", gap: 8 }}>
+              {[
+                { key: "CROP",  label: "✂️ CROP" },
+                { key: "PIXEL", label: "◼ PIXEL" },
+              ].map(({ key, label }) => (
+                <button
+                  key={key}
+                  className={`pill ${gameMode === key ? "active" : ""}`}
+                  onClick={() => setGameMode(key)}
                 >
                   {label}
                 </button>
@@ -517,32 +566,59 @@ export default function CoverQuiz() {
               }} />
             )}
 
-            {/* Div zoomé x2 — overflow:hidden = 1/4 visible */}
-            <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
-              <div style={{
-                position: "absolute",
-                width: "200%",
-                height: "200%",
-                top:    cropPos.top,
-                left:   cropPos.left,
-                bottom: cropPos.bottom,
-                right:  cropPos.right,
-                opacity: imgReady ? 1 : 0,
-                transition: "opacity .25s",
-              }}>
-                <Image
-                  key={current.id}
-                  src={current.cover_url}
-                  alt="pochette"
-                  fill
-                  className="animate-popIn"
-                  style={{ objectFit: "cover" }}
-                  onLoad={() => setImgReady(true)}
-                  sizes="840px"
-                  priority
-                />
+            {gameMode === "CROP" ? (
+              /* Div zoomé x2 — overflow:hidden = 1/4 visible */
+              <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+                <div style={{
+                  position: "absolute",
+                  width: "200%",
+                  height: "200%",
+                  top:    cropPos.top,
+                  left:   cropPos.left,
+                  bottom: cropPos.bottom,
+                  right:  cropPos.right,
+                  opacity: imgReady ? 1 : 0,
+                  transition: "opacity .25s",
+                }}>
+                  <Image
+                    key={current.id}
+                    src={current.cover_url}
+                    alt="pochette"
+                    fill
+                    className="animate-popIn"
+                    style={{ objectFit: "cover" }}
+                    onLoad={() => setImgReady(true)}
+                    sizes="840px"
+                    priority
+                  />
+                </div>
               </div>
-            </div>
+            ) : (
+              /* Mode PIXEL — image rendue à basse résolution puis scalée */
+              <div style={{ position: "absolute", inset: 0, overflow: "hidden", opacity: imgReady ? 1 : 0, transition: "opacity .25s" }}>
+                {(() => {
+                  const ps = getPixelSize(pixelTimer);
+                  return (
+                    <img
+                      key={current.id}
+                      src={current.cover_url}
+                      alt="pochette"
+                      onLoad={() => setImgReady(true)}
+                      style={{
+                        position: "absolute",
+                        top: 0, left: 0,
+                        width: ps,
+                        height: ps,
+                        imageRendering: "pixelated",
+                        transform: `scale(${380 / ps})`,
+                        transformOrigin: "top left",
+                        transition: "width .4s, height .4s",
+                      }}
+                    />
+                  );
+                })()}
+              </div>
+            )}
 
             {/* Corner badge */}
             <div style={{
