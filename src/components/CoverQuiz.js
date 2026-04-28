@@ -313,19 +313,22 @@ export default function CoverQuiz() {
   }, [input, current, found]);
 
   // ── Leaderboard ─────────────────────────────────────────────────────────────
-  const fetchLeaderboard = useCallback(async () => {
+  const [lbMode, setLbMode] = useState("CROP");
+
+  const fetchLeaderboard = useCallback(async (m) => {
     const { data } = await supabase
       .from("scores")
       .select("player, score, genre, created_at")
-      .eq("mode", gameMode)
+      .eq("mode", m)
       .order("score", { ascending: false })
       .limit(10);
     if (data) setLeaderboard(data);
-  }, [gameMode]);
+  }, []);
 
   useEffect(() => {
-    if (screen === "end" || screen === "home") fetchLeaderboard();
-  }, [screen, fetchLeaderboard]);
+    if (screen === "end" || screen === "home") fetchLeaderboard(lbMode);
+  }, [screen, lbMode, fetchLeaderboard]);
+
 
   const submitScore = async () => {
     if (!playerName.trim() || submitted || score === 0) return;
@@ -477,17 +480,20 @@ export default function CoverQuiz() {
           </button>
 
           {/* Leaderboard home */}
-          {leaderboard.length > 0 && (
-            <div className="animate-fadeUp delay-500" style={{ width: "100%" }}>
-              <div style={{
-                display: "flex", alignItems: "center", gap: 8, margin: "8px 0 10px",
-              }}>
-                <div style={{ flex: 1, height: 1, background: "var(--c-border)" }} />
-                <span style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-muted)" }}>
-                  🏆 TOP 10
-                </span>
-                <div style={{ flex: 1, height: 1, background: "var(--c-border)" }} />
-              </div>
+          <div className="animate-fadeUp delay-500" style={{ width: "100%" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "8px 0 10px" }}>
+              <div style={{ flex: 1, height: 1, background: "var(--c-border)" }} />
+              <span style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-muted)" }}>🏆 TOP 10</span>
+              <div style={{ flex: 1, height: 1, background: "var(--c-border)" }} />
+            </div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+              {["CROP", "PIXEL"].map((m) => (
+                <button key={m} className={`pill ${lbMode === m ? "active" : ""}`} onClick={() => setLbMode(m)}>
+                  {m === "CROP" ? "✂️ CROP" : "◼ PIXEL"}
+                </button>
+              ))}
+            </div>
+            {leaderboard.length > 0 ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {leaderboard.map((entry, i) => (
                   <div key={i} style={{
@@ -507,18 +513,18 @@ export default function CoverQuiz() {
                     {entry.genre && entry.genre !== "ALL" && (
                       <span style={{ fontSize: 10 }}>{entry.genre === "FR" ? "🇫🇷" : "🇺🇸"}</span>
                     )}
-                    <span style={{
-                      fontFamily: "var(--font-display)", fontSize: 20, color: "var(--c-gold)",
-                    }}>
+                    <span style={{ fontFamily: "var(--font-display)", fontSize: 20, color: "var(--c-gold)" }}>
                       {entry.score}
                     </span>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-        </div>
-      )}
+            ) : (
+              <div style={{ fontSize: 11, color: "var(--c-muted)", letterSpacing: 2, textAlign: "center", padding: "12px 0" }}>
+                AUCUN SCORE
+              </div>
+            )}
+          </div>
 
       {/* ── COUNTDOWN ───────────────────────────────────────────────────────── */}
       {screen === "countdown" && (
@@ -880,55 +886,55 @@ export default function CoverQuiz() {
           )}
 
           {/* Leaderboard */}
-          {leaderboard.length > 0 && (
-            <div style={{ width: "100%" }}>
-              <div style={{
-                display: "flex", alignItems: "center", gap: 8, marginBottom: 10,
-              }}>
-                <div style={{ flex: 1, height: 1, background: "var(--c-border)" }} />
-                <span style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-muted)" }}>
-                  🏆 TOP 10
-                </span>
-                <div style={{ flex: 1, height: 1, background: "var(--c-border)" }} />
-              </div>
+          <div style={{ width: "100%" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <div style={{ flex: 1, height: 1, background: "var(--c-border)" }} />
+              <span style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-muted)" }}>🏆 TOP 10</span>
+              <div style={{ flex: 1, height: 1, background: "var(--c-border)" }} />
+            </div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+              {["CROP", "PIXEL"].map((m) => (
+                <button key={m} className={`pill ${lbMode === m ? "active" : ""}`} onClick={() => setLbMode(m)}>
+                  {m === "CROP" ? "✂️ CROP" : "◼ PIXEL"}
+                </button>
+              ))}
+            </div>
+            {leaderboard.length > 0 ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {leaderboard.map((entry, i) => (
                   <div key={i} style={{
                     display: "flex", alignItems: "center", gap: 12,
                     padding: "8px 12px",
-                    background: entry.player === playerName.trim().toUpperCase() && submitted
+                    background: entry.player === playerName.trim().toUpperCase() && submitted && lbMode === gameMode
                       ? "rgba(255,214,10,.06)" : "var(--c-surface)",
-                    border: entry.player === playerName.trim().toUpperCase() && submitted
+                    border: entry.player === playerName.trim().toUpperCase() && submitted && lbMode === gameMode
                       ? "1px solid var(--c-gold)" : "1px solid var(--c-border)",
                   }}>
                     <span style={{
-                      fontFamily: "var(--font-display)",
-                      fontSize: 18,
+                      fontFamily: "var(--font-display)", fontSize: 18,
                       color: i === 0 ? "var(--c-gold)" : i === 1 ? "#aaa" : i === 2 ? "#cd7f32" : "var(--c-muted)",
                       minWidth: 24,
                     }}>
                       {i + 1}
                     </span>
-                    <span style={{ flex: 1, fontSize: 13, letterSpacing: 1 }}>
-                      {entry.player}
-                    </span>
+                    <span style={{ flex: 1, fontSize: 13, letterSpacing: 1 }}>{entry.player}</span>
                     {entry.genre && entry.genre !== "ALL" && (
                       <span style={{ fontSize: 10, color: "var(--c-muted)" }}>
                         {entry.genre === "FR" ? "🇫🇷" : "🇺🇸"}
                       </span>
                     )}
-                    <span style={{
-                      fontFamily: "var(--font-display)",
-                      fontSize: 20,
-                      color: "var(--c-gold)",
-                    }}>
+                    <span style={{ fontFamily: "var(--font-display)", fontSize: 20, color: "var(--c-gold)" }}>
                       {entry.score}
                     </span>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <div style={{ fontSize: 11, color: "var(--c-muted)", letterSpacing: 2, textAlign: "center", padding: "12px 0" }}>
+                AUCUN SCORE
+              </div>
+            )}
+          </div>
 
           {/* Buttons */}
           <button className="btn-cta" onClick={startCountdown}>
