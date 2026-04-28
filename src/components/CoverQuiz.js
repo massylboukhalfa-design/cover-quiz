@@ -97,7 +97,7 @@ function getPixelSize(step) {
 // ── Hyperbolic score (1/x curve) ─────────────────────────────────────────────
 function pixelScore(elapsed) {
   const t = Math.min(elapsed / PIXEL_REVEAL_DURATION, 1);
-  return Math.round(1 + 99 * (1 / (1 + PIXEL_K * t)));
+  return Math.max(20, Math.round(1 + 99 * (1 / (1 + PIXEL_K * t))));
 }
 
 export default function CoverQuiz() {
