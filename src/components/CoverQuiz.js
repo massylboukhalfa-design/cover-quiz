@@ -439,7 +439,7 @@ export default function CoverQuiz() {
             {gameMode === "PIXEL" ? (
               <>
                 <div>→ Cover révélée en {PIXEL_STEPS} étapes sur {PIXEL_REVEAL_DURATION}s</div>
-                <div>→ Plus vite tu trouves, plus tu scores (max 100pts)</div>
+                <div>→ Plus vite tu trouves, plus tu scores (max 1000pts)</div>
                 <div>→ ENTRÉE pour valider — tolérance aux fautes</div>
               </>
             ) : (
@@ -732,7 +732,7 @@ export default function CoverQuiz() {
             <div className={`answer-tag ${found ? "found" : ""}`}>
               <span>{found ? current.album : "ALBUM ?"}</span>
               {gameMode === "PIXEL"
-                ? <span style={{ fontSize: 10, opacity: .5 }}>max {pixelScore(0)}pts → 1pt</span>
+                ? <span style={{ fontSize: 10, opacity: .5 }}>max 100pts → 20pts</span>
                 : <span style={{ fontSize: 10, opacity: .5 }}>+{PTS}pt</span>
               }
             </div>
