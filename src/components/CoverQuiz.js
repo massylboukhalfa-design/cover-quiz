@@ -183,9 +183,9 @@ export default function CoverQuiz() {
     setScreen("game");
   }, [albums]);
 
-  // ── Timer ───────────────────────────────────────────────────────────────────
+  // ── Timer (CROP mode uniquement) ────────────────────────────────────────────
   useEffect(() => {
-    if (screen !== "game") return;
+    if (screen !== "game" || gameMode !== "CROP") return;
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) {
@@ -197,7 +197,7 @@ export default function CoverQuiz() {
       });
     }, 1000);
     return () => clearInterval(timerRef.current);
-  }, [screen]);
+  }, [screen, gameMode]);
 
   // ── Pixel timer — reset + progression par album ─────────────────────────────
   useEffect(() => {
@@ -560,38 +560,49 @@ export default function CoverQuiz() {
               </div>
             </div>
 
-            {/* Timer */}
+            {/* Centre : timer (CROP) ou compteur covers (PIXEL) */}
             <div style={{ flex: 1, padding: "0 16px", textAlign: "center" }}>
-              <div style={{
-                fontFamily: "var(--font-display)",
-                fontSize: 42, color: timerColor, lineHeight: 1,
-                transition: "color .5s",
-                ...(isCritical ? { animation: "timerPulse 1s infinite" } : {}),
-              }}>
-                {fmt(timeLeft)}
-              </div>
-              {/* progress bar */}
-              <div style={{
-                height: 3, background: "var(--c-border)",
-                marginTop: 6, borderRadius: 0,
-              }}>
-                <div style={{
-                  height: "100%", width: `${pct}%`,
-                  background: timerColor,
-                  transition: "width 1s linear, background .5s",
-                }} />
-              </div>
+              {gameMode === "CROP" ? (
+                <>
+                  <div style={{
+                    fontFamily: "var(--font-display)",
+                    fontSize: 42, color: timerColor, lineHeight: 1,
+                    transition: "color .5s",
+                    ...(isCritical ? { animation: "timerPulse 1s infinite" } : {}),
+                  }}>
+                    {fmt(timeLeft)}
+                  </div>
+                  <div style={{ height: 3, background: "var(--c-border)", marginTop: 6 }}>
+                    <div style={{
+                      height: "100%", width: `${pct}%`,
+                      background: timerColor,
+                      transition: "width 1s linear, background .5s",
+                    }} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 42, color: "var(--c-muted)", lineHeight: 1 }}>
+                    {queue.length + 1}
+                  </div>
+                  <div style={{ fontSize: 10, color: "var(--c-muted)", letterSpacing: 2, marginTop: 2 }}>
+                    RESTANTS
+                  </div>
+                </>
+              )}
             </div>
 
-            {/* Queue */}
-            <div style={{ minWidth: 70, textAlign: "right" }}>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--c-muted)" }}>
-                {queue.length + 1}
+            {/* Queue (CROP uniquement) */}
+            {gameMode === "CROP" && (
+              <div style={{ minWidth: 70, textAlign: "right" }}>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--c-muted)" }}>
+                  {queue.length + 1}
+                </div>
+                <div style={{ fontSize: 10, color: "var(--c-muted)", letterSpacing: 2 }}>
+                  RESTANTS
+                </div>
               </div>
-              <div style={{ fontSize: 10, color: "var(--c-muted)", letterSpacing: 2 }}>
-                RESTANTS
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Cover */}
