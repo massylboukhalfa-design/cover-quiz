@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 // ── Constants ─────────────────────────────────────────────────────────────────
 const GAME_DURATION        = 120;
 const PTS                  = 1;
+const SKIP_PENALTY         = 0;
 
 // PIXEL mode
 const PIXEL_REVEAL_DURATION = 20;        // secondes pour révélation complète
@@ -301,15 +302,16 @@ export default function CoverQuiz() {
   const fetchLeaderboard = useCallback(async () => {
     const { data } = await supabase
       .from("scores")
-      .select("player, score, genre, created_at")
+      .select("player, score, genre, game_mode, created_at")
+      .eq("game_mode", gameMode)
       .order("score", { ascending: false })
       .limit(10);
     if (data) setLeaderboard(data);
-  }, []);
+  }, [gameMode]);
 
   useEffect(() => {
     if (screen === "end" || screen === "home") fetchLeaderboard();
-  }, [screen, fetchLeaderboard]);
+  }, [screen, gameMode, fetchLeaderboard]);
 
   const submitScore = async () => {
     if (!playerName.trim() || submitted || score === 0) return;
@@ -318,6 +320,7 @@ export default function CoverQuiz() {
       player: playerName.trim().toUpperCase(),
       score,
       genre,
+      game_mode: gameMode,
     });
     setSubmitted(true);
     setSubmitting(false);
@@ -427,7 +430,7 @@ export default function CoverQuiz() {
             }}>
               <Stat label="ALBUMS" value={albums.length} />
               <Stat label="DURÉE"  value="2:00" />
-              <Stat label="MAX"    value={gameMode === "PIXEL" ? "1000 pts" : `${albums.length} pts`} />
+              <Stat label="MAX"    value={`${albums.length} pts`} />
             </div>
           )}
 
@@ -439,7 +442,7 @@ export default function CoverQuiz() {
             {gameMode === "PIXEL" ? (
               <>
                 <div>→ Cover révélée en {PIXEL_STEPS} étapes sur {PIXEL_REVEAL_DURATION}s</div>
-                <div>→ Plus vite tu trouves, plus tu scores (max 1000pts)</div>
+                <div>→ Plus vite tu trouves, plus tu scores (max 100pts)</div>
                 <div>→ ENTRÉE pour valider — tolérance aux fautes</div>
               </>
             ) : (
@@ -477,7 +480,7 @@ export default function CoverQuiz() {
               }}>
                 <div style={{ flex: 1, height: 1, background: "var(--c-border)" }} />
                 <span style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-muted)" }}>
-                  🏆 TOP 10
+                  🏆 TOP 10 — {gameMode}
                 </span>
                 <div style={{ flex: 1, height: 1, background: "var(--c-border)" }} />
               </div>
@@ -732,7 +735,7 @@ export default function CoverQuiz() {
             <div className={`answer-tag ${found ? "found" : ""}`}>
               <span>{found ? current.album : "ALBUM ?"}</span>
               {gameMode === "PIXEL"
-                ? <span style={{ fontSize: 10, opacity: .5 }}>max 100pts → 20pts</span>
+                ? <span style={{ fontSize: 10, opacity: .5 }}>max {pixelScore(0)}pts → 1pt</span>
                 : <span style={{ fontSize: 10, opacity: .5 }}>+{PTS}pt</span>
               }
             </div>
@@ -950,7 +953,7 @@ export default function CoverQuiz() {
               }}>
                 <div style={{ flex: 1, height: 1, background: "var(--c-border)" }} />
                 <span style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-muted)" }}>
-                  🏆 TOP 10
+                  🏆 TOP 10 — {gameMode}
                 </span>
                 <div style={{ flex: 1, height: 1, background: "var(--c-border)" }} />
               </div>
