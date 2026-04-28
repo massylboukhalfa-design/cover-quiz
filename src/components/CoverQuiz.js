@@ -205,11 +205,10 @@ export default function CoverQuiz() {
     return () => clearInterval(pixelRef.current);
   }, [current?.id, screen, gameMode]); // eslint-disable-line
 
-  // ── Canvas pixelation draw ───────────────────────────────────────────────────
-  const drawPixelated = useCallback((ps) => {
+  // ── Canvas pixelation — fetch blob pour éviter CORS ────────────────────────
+  const drawPixelated = useCallback((img, ps) => {
     const canvas = canvasRef.current;
-    const img    = pixelImgRef.current;
-    if (!canvas || !img || !img.complete || !img.naturalWidth) return;
+    if (!canvas || !img) return;
     const SIZE = 380;
     const off  = document.createElement("canvas");
     off.width  = ps;
@@ -224,9 +223,38 @@ export default function CoverQuiz() {
     setImgReady(true);
   }, []);
 
+  // Charge l'image via blob au changement d'album
   useEffect(() => {
-    if (gameMode !== "PIXEL") return;
-    drawPixelated(getPixelSize(pixelTimer));
+    if (gameMode !== "PIXEL" || !current) return;
+    let cancelled = false;
+    let blobUrl = null;
+    setImgReady(false);
+
+    fetch(current.cover_url)
+      .then((r) => r.blob())
+      .then((blob) => {
+        if (cancelled) return;
+        blobUrl = URL.createObjectURL(blob);
+        const img = new Image();
+        img.onload = () => {
+          if (cancelled) return;
+          pixelImgRef.current = img;
+          drawPixelated(img, getPixelSize(pixelTimer));
+        };
+        img.src = blobUrl;
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+  }, [current?.id, gameMode]); // eslint-disable-line
+
+  // Redessine quand le timer pixel tick
+  useEffect(() => {
+    if (gameMode !== "PIXEL" || !pixelImgRef.current) return;
+    drawPixelated(pixelImgRef.current, getPixelSize(pixelTimer));
   }, [pixelTimer, gameMode, drawPixelated]);
 
   // Focus input when game starts
@@ -620,30 +648,19 @@ export default function CoverQuiz() {
                 </div>
               </div>
             ) : (
-              /* Mode PIXEL — canvas pour pixelisation vraie */
-              <>
-                <img
-                  key={current.id}
-                  ref={pixelImgRef}
-                  src={current.cover_url}
-                  alt=""
-                  crossOrigin="anonymous"
-                  onLoad={() => drawPixelated(getPixelSize(pixelTimer))}
-                  style={{ display: "none" }}
-                />
-                <canvas
-                  ref={canvasRef}
-                  width={380}
-                  height={380}
-                  style={{
-                    position: "absolute", inset: 0,
-                    width: "100%", height: "100%",
-                    opacity: imgReady ? 1 : 0,
-                    transition: "opacity .25s",
-                    imageRendering: "pixelated",
-                  }}
-                />
-              </>
+              /* Mode PIXEL — canvas pour pixelisation vraie via blob */
+              <canvas
+                ref={canvasRef}
+                width={380}
+                height={380}
+                style={{
+                  position: "absolute", inset: 0,
+                  width: "100%", height: "100%",
+                  opacity: imgReady ? 1 : 0,
+                  transition: "opacity .25s",
+                  imageRendering: "pixelated",
+                }}
+              />
             )}
 
             {/* Corner badge */}
