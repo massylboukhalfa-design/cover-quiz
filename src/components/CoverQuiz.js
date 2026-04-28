@@ -6,7 +6,7 @@ import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const GAME_DURATION        = 120;
+const GAME_COVERS          = 10;
 const PTS                  = 1;
 const SKIP_PENALTY         = 0;
 
@@ -83,11 +83,6 @@ const CORNERS = [
 ];
 const randomCrop = () => CORNERS[Math.floor(Math.random() * CORNERS.length)];
 
-const fmt = (s) => {
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
-  return `${m}:${String(sec).padStart(2, "0")}`;
-};
 
 // ── Pixel size from step index ────────────────────────────────────────────────
 function getPixelSize(step) {
@@ -111,7 +106,6 @@ export default function CoverQuiz() {
   // game state
   const [queue, setQueue]         = useState([]);
   const [current, setCurrent]     = useState(null);
-  const [timeLeft, setTimeLeft]   = useState(GAME_DURATION);
   const [score, setScore]         = useState(0);
   const [found, setFound]         = useState(false);
   const [input, setInput]         = useState("");
@@ -130,7 +124,6 @@ export default function CoverQuiz() {
   const [pixelElapsed, setPixelElapsed] = useState(0);
 
   const inputRef    = useRef(null);
-  const timerRef    = useRef(null);
   const cdRef       = useRef(null);
   const pixelRef    = useRef(null);
   const canvasRef   = useRef(null);
@@ -166,7 +159,7 @@ export default function CoverQuiz() {
   }, [albums]); // eslint-disable-line
 
   const launchGame = useCallback(() => {
-    const shuffled = shuffle(albums);
+    const shuffled = shuffle(albums).slice(0, GAME_COVERS);
     const [first, ...rest] = shuffled;
     setCurrent(first);
     setQueue(rest);
@@ -177,27 +170,10 @@ export default function CoverQuiz() {
     setSkipped(0);
     setPlayerName("");
     setSubmitted(false);
-    setTimeLeft(GAME_DURATION);
     setImgReady(false);
     setCropPos(randomCrop());
     setScreen("game");
   }, [albums]);
-
-  // ── Timer ───────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (screen !== "game") return;
-    timerRef.current = setInterval(() => {
-      setTimeLeft((t) => {
-        if (t <= 1) {
-          clearInterval(timerRef.current);
-          setScreen("end");
-          return 0;
-        }
-        return t - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timerRef.current);
-  }, [screen]);
 
   // ── Pixel timer — reset + progression par album ─────────────────────────────
   useEffect(() => {
@@ -325,13 +301,6 @@ export default function CoverQuiz() {
     fetchLeaderboard();
   };
 
-  // ── Timer color ──────────────────────────────────────────────────────────────
-  const pct = (timeLeft / GAME_DURATION) * 100;
-  const timerColor =
-    pct > 50 ? "var(--c-cyan)" :
-    pct > 20 ? "var(--c-gold)" :
-               "var(--c-accent)";
-  const isCritical = pct <= 20;
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
@@ -426,9 +395,8 @@ export default function CoverQuiz() {
               borderBottom: "1px solid var(--c-border)", padding: "16px 0", width: "100%",
               justifyContent: "center",
             }}>
-              <Stat label="ALBUMS" value={albums.length} />
-              <Stat label="DURÉE"  value="2:00" />
-              <Stat label="MAX"    value={`${albums.length} pts`} />
+              <Stat label="COVERS" value={GAME_COVERS} />
+              <Stat label="ALBUMS DISPO" value={albums.length} />
             </div>
           )}
 
@@ -560,36 +528,13 @@ export default function CoverQuiz() {
               </div>
             </div>
 
-            {/* Timer */}
+            {/* Cover counter */}
             <div style={{ flex: 1, padding: "0 16px", textAlign: "center" }}>
-              <div style={{
-                fontFamily: "var(--font-display)",
-                fontSize: 42, color: timerColor, lineHeight: 1,
-                transition: "color .5s",
-                ...(isCritical ? { animation: "timerPulse 1s infinite" } : {}),
-              }}>
-                {fmt(timeLeft)}
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 42, color: "var(--c-muted)", lineHeight: 1 }}>
+                {GAME_COVERS - history.length}
               </div>
-              {/* progress bar */}
-              <div style={{
-                height: 3, background: "var(--c-border)",
-                marginTop: 6, borderRadius: 0,
-              }}>
-                <div style={{
-                  height: "100%", width: `${pct}%`,
-                  background: timerColor,
-                  transition: "width 1s linear, background .5s",
-                }} />
-              </div>
-            </div>
-
-            {/* Queue */}
-            <div style={{ minWidth: 70, textAlign: "right" }}>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--c-muted)" }}>
-                {queue.length + 1}
-              </div>
-              <div style={{ fontSize: 10, color: "var(--c-muted)", letterSpacing: 2 }}>
-                RESTANTS
+              <div style={{ fontSize: 10, color: "var(--c-muted)", letterSpacing: 2, marginTop: 2 }}>
+                / {GAME_COVERS}
               </div>
             </div>
           </div>
@@ -779,7 +724,7 @@ export default function CoverQuiz() {
               fontFamily: "var(--font-display)",
               fontSize: 13, letterSpacing: 6, color: "var(--c-muted)", marginBottom: 8,
             }}>
-              TEMPS ÉCOULÉ
+              PARTIE TERMINÉE
             </div>
             <div style={{
               fontFamily: "var(--font-display)",
