@@ -162,7 +162,7 @@ export default function CoverQuiz() {
         setCountdown(n);
       }
     }, 900);
-  }, [albums]); // eslint-disable-line
+  }, [launchGame]); // eslint-disable-line
 
   const launchGame = useCallback(() => {
     const pool = gameMode === "PIXEL" ? shuffle(albums).slice(0, 10) : shuffle(albums);
