@@ -8,7 +8,6 @@ import { supabase } from "@/lib/supabase";
 // ── Constants ─────────────────────────────────────────────────────────────────
 const GAME_DURATION        = 120;
 const PTS                  = 1;
-const SKIP_PENALTY         = 0;
 
 // PIXEL mode
 const PIXEL_REVEAL_DURATION = 20;        // secondes pour révélation complète
@@ -181,7 +180,7 @@ export default function CoverQuiz() {
     setImgReady(false);
     setCropPos(randomCrop());
     setScreen("game");
-  }, [albums]);
+  }, [albums, gameMode]);
 
   // ── Timer (CROP mode uniquement) ────────────────────────────────────────────
   useEffect(() => {
