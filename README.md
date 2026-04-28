@@ -38,13 +38,12 @@ npm run dev
 ## Scoring
 | Action | Points |
 |---|---|
-| Artiste trouvé | +1 |
-| Album trouvé | +2 |
-| Maximum théorique | `nb albums × 3` |
+| Album trouvé | +1 |
+
 
 ## Fonctionnalités
 - Filtre FR / US / Tout
 - Countdown 3-2-1 avant le jeu
 - Tolérance aux fautes de frappe et accents
-- Passage automatique quand artiste + album trouvés
-- Récap visuel en fin de partie
+- Passage automatique quand album trouvés
+- Récap visuel en fin de partie et leadeboard
