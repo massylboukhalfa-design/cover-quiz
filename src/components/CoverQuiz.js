@@ -372,7 +372,7 @@ export default function CoverQuiz() {
               QUIZ
             </div>
             <p style={{ color: "var(--c-muted)", fontSize: 12, letterSpacing: 2, marginTop: 8 }}>
-              2 MINUTES — AUTANT QUE POSSIBLE
+              {gameMode === "PIXEL" ? "10 COVERS — LE PLUS VITE POSSIBLE" : "2 MINUTES — AUTANT QUE POSSIBLE"}
             </p>
           </div>
 
