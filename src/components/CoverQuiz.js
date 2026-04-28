@@ -241,7 +241,7 @@ export default function CoverQuiz() {
   }, []);
 
   useEffect(() => {
-    if (screen === "end") fetchLeaderboard();
+    if (screen === "end" || screen === "home") fetchLeaderboard();
   }, [screen, fetchLeaderboard]);
 
   const submitScore = async () => {
@@ -370,6 +370,48 @@ export default function CoverQuiz() {
           >
             {loading ? "CHARGEMENT…" : "LANCER LE JEU"}
           </button>
+
+          {/* Leaderboard home */}
+          {leaderboard.length > 0 && (
+            <div className="animate-fadeUp delay-500" style={{ width: "100%" }}>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 8, margin: "8px 0 10px",
+              }}>
+                <div style={{ flex: 1, height: 1, background: "var(--c-border)" }} />
+                <span style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-muted)" }}>
+                  🏆 TOP 10
+                </span>
+                <div style={{ flex: 1, height: 1, background: "var(--c-border)" }} />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {leaderboard.map((entry, i) => (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "center", gap: 12,
+                    padding: "8px 12px",
+                    background: "var(--c-surface)",
+                    border: "1px solid var(--c-border)",
+                  }}>
+                    <span style={{
+                      fontFamily: "var(--font-display)", fontSize: 18,
+                      color: i === 0 ? "var(--c-gold)" : i === 1 ? "#aaa" : i === 2 ? "#cd7f32" : "var(--c-muted)",
+                      minWidth: 24,
+                    }}>
+                      {i + 1}
+                    </span>
+                    <span style={{ flex: 1, fontSize: 13, letterSpacing: 1 }}>{entry.player}</span>
+                    {entry.genre && entry.genre !== "ALL" && (
+                      <span style={{ fontSize: 10 }}>{entry.genre === "FR" ? "🇫🇷" : "🇺🇸"}</span>
+                    )}
+                    <span style={{
+                      fontFamily: "var(--font-display)", fontSize: 20, color: "var(--c-gold)",
+                    }}>
+                      {entry.score}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
