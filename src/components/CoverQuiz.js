@@ -150,22 +150,7 @@ export default function CoverQuiz() {
     load();
   }, [genre]);
 
-  // ── Countdown before game ───────────────────────────────────────────────────
-  const startCountdown = useCallback(() => {
-    setCountdown(3);
-    setScreen("countdown");
-    let n = 3;
-    cdRef.current = setInterval(() => {
-      n--;
-      if (n <= 0) {
-        clearInterval(cdRef.current);
-        launchGame();
-      } else {
-        setCountdown(n);
-      }
-    }, 900);
-  }, [launchGame]); // eslint-disable-line
-
+  // ── Launch game ─────────────────────────────────────────────────────────────
   const launchGame = useCallback(() => {
     const pool = gameModeRef.current === "PIXEL" ? shuffle(albums).slice(0, 10) : shuffle(albums);
     const [first, ...rest] = pool;
@@ -183,6 +168,22 @@ export default function CoverQuiz() {
     setCropPos(randomCrop());
     setScreen("game");
   }, [albums]);
+
+  // ── Countdown before game ───────────────────────────────────────────────────
+  const startCountdown = useCallback(() => {
+    setCountdown(3);
+    setScreen("countdown");
+    let n = 3;
+    cdRef.current = setInterval(() => {
+      n--;
+      if (n <= 0) {
+        clearInterval(cdRef.current);
+        launchGame();
+      } else {
+        setCountdown(n);
+      }
+    }, 900);
+  }, [launchGame]);
 
   // ── Timer (CROP mode uniquement) ────────────────────────────────────────────
   useEffect(() => {
