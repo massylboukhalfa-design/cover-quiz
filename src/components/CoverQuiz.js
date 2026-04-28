@@ -605,14 +605,11 @@ export default function CoverQuiz() {
                       alt="pochette"
                       onLoad={() => setImgReady(true)}
                       style={{
-                        position: "absolute",
-                        top: 0, left: 0,
+                        display: "block",
                         width: ps,
                         height: ps,
                         imageRendering: "pixelated",
-                        transform: `scale(${380 / ps})`,
-                        transformOrigin: "top left",
-                        transition: "width .4s, height .4s",
+                        zoom: 380 / ps,
                       }}
                     />
                   );
