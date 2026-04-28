@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
@@ -319,6 +320,16 @@ export default function CoverQuiz() {
           </div>
 
           {/* CTA */}
+          <Link href="/" style={{ textDecoration: "none", width: "100%" }}>
+            <button style={{
+              width: "100%", padding: "12px", background: "none",
+              border: "1px solid var(--c-border)", color: "var(--c-muted)",
+              fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: 2,
+              cursor: "pointer", marginBottom: 8,
+            }}>
+              ← ACCUEIL
+            </button>
+          </Link>
           <button
             className="btn-cta animate-fadeUp delay-400"
             onClick={startCountdown}
@@ -638,16 +649,15 @@ export default function CoverQuiz() {
           <button className="btn-cta" onClick={startCountdown}>
             REJOUER
           </button>
-          <button
-            onClick={() => setScreen("home")}
-            style={{
+          <Link href="/" style={{ textDecoration: "none" }}>
+            <button style={{
               background: "none", border: "none", color: "var(--c-muted)",
               cursor: "pointer", fontFamily: "var(--font-mono)",
               fontSize: 11, letterSpacing: 2,
-            }}
-          >
-            ← ACCUEIL
-          </button>
+            }}>
+              ← ACCUEIL
+            </button>
+          </Link>
         </div>
       )}
     </div>
