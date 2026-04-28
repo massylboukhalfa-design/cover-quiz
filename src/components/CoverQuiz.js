@@ -6,9 +6,16 @@ import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const GAME_DURATION  = 120;
-const PTS           = 1;
-const SKIP_PENALTY   = 0; // pas de pénalité pour passer
+const GAME_DURATION        = 120;
+const PTS                  = 1;
+const SKIP_PENALTY         = 0;
+
+// PIXEL mode
+const PIXEL_REVEAL_DURATION = 30;        // secondes pour révélation complète
+const PIXEL_STEPS           = 10;        // nombre d'étapes
+const PIXEL_STEP_DURATION   = PIXEL_REVEAL_DURATION / PIXEL_STEPS; // 3s par étape
+const PIXEL_K               = 9;         // constante courbe hyperbolique
+const PIXEL_SIZES           = [4, 6, 8, 12, 16, 24, 32, 48, 64, 128, 380];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const normalize = (s = "") =>
@@ -82,15 +89,15 @@ const fmt = (s) => {
   return `${m}:${String(sec).padStart(2, "0")}`;
 };
 
-// ── Component ─────────────────────────────────────────────────────────────────
-// ── Pixel size from per-album countdown (20s) ────────────────────────────────
-function getPixelSize(t) {
-  if (t > 8) return 8;
-  if (t > 6) return 16;
-  if (t > 4) return 32;
-  if (t > 2) return 64;
-  if (t > 0) return 128;
-  return 380; // full res
+// ── Pixel size from step index ────────────────────────────────────────────────
+function getPixelSize(step) {
+  return PIXEL_SIZES[Math.min(step, PIXEL_SIZES.length - 1)];
+}
+
+// ── Hyperbolic score (1/x curve) ─────────────────────────────────────────────
+function pixelScore(elapsed) {
+  const t = Math.min(elapsed / PIXEL_REVEAL_DURATION, 1);
+  return Math.round(1 + 99 * (1 / (1 + PIXEL_K * t)));
 }
 
 export default function CoverQuiz() {
@@ -119,7 +126,8 @@ export default function CoverQuiz() {
   const [submitting, setSubmitting] = useState(false);
   const [leaderboard, setLeaderboard] = useState([]);
 
-  const [pixelTimer, setPixelTimer] = useState(20);
+  const [pixelStep,    setPixelStep]    = useState(0);
+  const [pixelElapsed, setPixelElapsed] = useState(0);
 
   const inputRef    = useRef(null);
   const timerRef    = useRef(null);
@@ -191,16 +199,18 @@ export default function CoverQuiz() {
     return () => clearInterval(timerRef.current);
   }, [screen]);
 
-  // ── Pixel timer — reset + countdown par album ───────────────────────────────
+  // ── Pixel timer — reset + progression par album ─────────────────────────────
   useEffect(() => {
     if (screen !== "game" || gameMode !== "PIXEL") return;
     clearInterval(pixelRef.current);
-    setPixelTimer(10);
-    let t = 10;
+    setPixelStep(0);
+    setPixelElapsed(0);
+    let elapsed = 0;
     pixelRef.current = setInterval(() => {
-      t--;
-      setPixelTimer(t);
-      if (t <= 0) clearInterval(pixelRef.current);
+      elapsed++;
+      setPixelElapsed(elapsed);
+      setPixelStep(Math.min(Math.floor(elapsed / PIXEL_STEP_DURATION), PIXEL_STEPS));
+      if (elapsed >= PIXEL_REVEAL_DURATION) clearInterval(pixelRef.current);
     }, 1000);
     return () => clearInterval(pixelRef.current);
   }, [current?.id, screen, gameMode]); // eslint-disable-line
@@ -229,7 +239,6 @@ export default function CoverQuiz() {
     let cancelled = false;
     let blobUrl = null;
     setImgReady(false);
-
     fetch(current.cover_url)
       .then((r) => r.blob())
       .then((blob) => {
@@ -239,36 +248,42 @@ export default function CoverQuiz() {
         img.onload = () => {
           if (cancelled) return;
           pixelImgRef.current = img;
-          drawPixelated(img, getPixelSize(pixelTimer));
+          drawPixelated(img, getPixelSize(0));
         };
         img.src = blobUrl;
       })
       .catch(() => {});
-
     return () => {
       cancelled = true;
       if (blobUrl) URL.revokeObjectURL(blobUrl);
     };
   }, [current?.id, gameMode]); // eslint-disable-line
 
-  // Redessine quand le timer pixel tick
+  // Redessine à chaque étape
   useEffect(() => {
     if (gameMode !== "PIXEL" || !pixelImgRef.current) return;
-    drawPixelated(pixelImgRef.current, getPixelSize(pixelTimer));
-  }, [pixelTimer, gameMode, drawPixelated]);
+    drawPixelated(pixelImgRef.current, getPixelSize(pixelStep));
+  }, [pixelStep, gameMode, drawPixelated]);
 
   // Focus input when game starts
   useEffect(() => {
     if (screen === "game") inputRef.current?.focus();
   }, [screen, current]);
 
-  // ── Auto-advance when both found ─────────────────────────────────────────────
+  // ── Auto-advance when found ──────────────────────────────────────────────────
   useEffect(() => {
     if (found) {
       const t = setTimeout(() => advance(false), 700);
       return () => clearTimeout(t);
     }
   }, [found]); // eslint-disable-line
+
+  // ── Auto-advance when PIXEL fully revealed without answer ────────────────────
+  useEffect(() => {
+    if (gameMode !== "PIXEL" || pixelStep < PIXEL_STEPS || found) return;
+    const t = setTimeout(() => advance(true), 2000);
+    return () => clearTimeout(t);
+  }, [pixelStep, gameMode, found]); // eslint-disable-line
 
   // ── Advance to next card ─────────────────────────────────────────────────────
   const advance = useCallback((wasSkipped = false) => {
@@ -293,24 +308,21 @@ export default function CoverQuiz() {
   // ── Guess handler ────────────────────────────────────────────────────────────
   const handleGuess = useCallback(() => {
     const val = input.trim();
-    if (!val || !current) return;
+    if (!val || !current || found) return;
+    if (gameMode === "PIXEL" && pixelStep >= PIXEL_STEPS) return;
 
-    let hit = false;
-
-    if (!found && isClose(val, current.album)) {
+    if (isClose(val, current.album)) {
+      const pts = gameMode === "PIXEL" ? pixelScore(pixelElapsed) : PTS;
       setFound(true);
-      setScore((s) => s + PTS);
-      hit = true;
-    }
-
-    if (!hit) {
+      setScore((s) => s + pts);
+    } else {
       setShaking(true);
       setTimeout(() => setShaking(false), 350);
     }
 
     setInput("");
     inputRef.current?.focus();
-  }, [input, current, found]);
+  }, [input, current, found, gameMode, pixelStep, pixelElapsed]);
 
   // ── Leaderboard ─────────────────────────────────────────────────────────────
   const fetchLeaderboard = useCallback(async () => {
@@ -451,8 +463,18 @@ export default function CoverQuiz() {
             fontSize: 11, color: "var(--c-muted)", lineHeight: 1.8,
             letterSpacing: 1, width: "100%",
           }}>
-            <div>→ +{PTS} pt par album trouvé</div>
-            <div>→ ENTRÉE pour valider — tolérance aux fautes</div>
+            {gameMode === "PIXEL" ? (
+              <>
+                <div>→ Cover révélée en {PIXEL_STEPS} étapes sur {PIXEL_REVEAL_DURATION}s</div>
+                <div>→ Plus vite tu trouves, plus tu scores (max 100pts)</div>
+                <div>→ ENTRÉE pour valider — tolérance aux fautes</div>
+              </>
+            ) : (
+              <>
+                <div>→ +{PTS} pt par album trouvé</div>
+                <div>→ ENTRÉE pour valider — tolérance aux fautes</div>
+              </>
+            )}
           </div>
 
           {/* CTA */}
@@ -663,6 +685,31 @@ export default function CoverQuiz() {
               />
             )}
 
+            {/* Overlay révélation PIXEL */}
+            {gameMode === "PIXEL" && pixelStep >= PIXEL_STEPS && !found && (
+              <div style={{
+                position: "absolute", inset: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "rgba(0,0,0,0.55)",
+              }}>
+                <div style={{
+                  textAlign: "center", padding: "14px 24px",
+                  background: "var(--c-surface)",
+                  border: "1px solid var(--c-accent)",
+                }}>
+                  <div style={{ fontSize: 9, letterSpacing: 3, color: "var(--c-muted)", marginBottom: 6 }}>
+                    C'ÉTAIT
+                  </div>
+                  <div style={{
+                    fontFamily: "var(--font-display)", fontSize: 18,
+                    color: "var(--c-accent)", letterSpacing: 2,
+                  }}>
+                    {current.album}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Corner badge */}
             <div style={{
               position: "absolute", top: 10, right: 10,
@@ -674,42 +721,66 @@ export default function CoverQuiz() {
             </div>
           </div>
 
+          {/* Pixel progress bar */}
+          {gameMode === "PIXEL" && (
+            <div style={{ width: "100%", height: 3, background: "var(--c-border)" }}>
+              <div style={{
+                height: "100%",
+                width: `${(pixelStep / PIXEL_STEPS) * 100}%`,
+                background: pixelStep >= PIXEL_STEPS ? "var(--c-accent)" : "var(--c-cyan)",
+                transition: "width 1s linear",
+              }} />
+            </div>
+          )}
+
           {/* Answer tags */}
           <div style={{ display: "flex", gap: 8, width: "100%" }}>
             <div className={`answer-tag ${found ? "found" : ""}`}>
               <span>{found ? current.album : "ALBUM ?"}</span>
-              <span style={{ fontSize: 10, opacity: .5 }}>+{PTS}pt</span>
+              {gameMode === "PIXEL"
+                ? <span style={{ fontSize: 10, opacity: .5 }}>max {pixelScore(0)}pts → 1pt</span>
+                : <span style={{ fontSize: 10, opacity: .5 }}>+{PTS}pt</span>
+              }
             </div>
           </div>
 
           {/* Input */}
-          <div style={{ display: "flex", gap: 0, width: "100%" }}>
-            <input
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleGuess(); }}
-              placeholder="Tape ta réponse…"
-              className="quiz-input"
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck="false"
-            />
-            <button className="quiz-submit" onClick={handleGuess}>→</button>
-          </div>
+          {(() => {
+            const revealed = gameMode === "PIXEL" && pixelStep >= PIXEL_STEPS;
+            return (
+              <div style={{ display: "flex", gap: 0, width: "100%" }}>
+                <input
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleGuess(); }}
+                  placeholder={revealed ? current.album : "Tape ta réponse…"}
+                  className="quiz-input"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck="false"
+                  disabled={revealed}
+                  style={revealed ? { opacity: 0.4, cursor: "not-allowed" } : {}}
+                />
+                <button className="quiz-submit" onClick={handleGuess} disabled={revealed}>→</button>
+              </div>
+            );
+          })()}
 
           {/* Skip */}
-          <button
-            onClick={() => advance(true)}
-            style={{
-              background: "none", border: "none",
-              color: "var(--c-muted)", cursor: "pointer",
-              fontFamily: "var(--font-mono)", fontSize: 11,
-              letterSpacing: 2,
-            }}
-          >
-            PASSER ⟩
-          </button>
+          {!(gameMode === "PIXEL" && pixelStep >= PIXEL_STEPS) && (
+            <button
+              onClick={() => advance(true)}
+              style={{
+                background: "none", border: "none",
+                color: "var(--c-muted)", cursor: "pointer",
+                fontFamily: "var(--font-mono)", fontSize: 11,
+                letterSpacing: 2,
+              }}
+            >
+              PASSER ⟩
+            </button>
+          )}
         </div>
       )}
 
