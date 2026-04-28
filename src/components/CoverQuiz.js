@@ -11,7 +11,7 @@ const PTS                  = 1;
 const SKIP_PENALTY         = 0;
 
 // PIXEL mode
-const PIXEL_REVEAL_DURATION = 30;        // secondes pour révélation complète
+const PIXEL_REVEAL_DURATION = 20;        // secondes pour révélation complète
 const PIXEL_STEPS           = 10;        // nombre d'étapes
 const PIXEL_STEP_DURATION   = PIXEL_REVEAL_DURATION / PIXEL_STEPS; // 3s par étape
 const PIXEL_K               = 9;         // constante courbe hyperbolique
