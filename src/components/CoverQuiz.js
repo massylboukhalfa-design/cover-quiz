@@ -8,7 +8,6 @@ import { supabase } from "@/lib/supabase";
 // ── Constants ─────────────────────────────────────────────────────────────────
 const GAME_DURATION        = 120;
 const PTS                  = 1;
-const SKIP_PENALTY         = 0;
 
 // PIXEL mode
 const PIXEL_REVEAL_DURATION = 20;        // secondes pour révélation complète
@@ -428,7 +427,7 @@ export default function CoverQuiz() {
             }}>
               <Stat label="ALBUMS" value={albums.length} />
               <Stat label="DURÉE"  value="2:00" />
-              <Stat label="MAX"    value={`${albums.length} pts`} />
+              <Stat label="MAX"    value={gameMode === "PIXEL" ? "1000 pts" : `${albums.length} pts`} />
             </div>
           )}
 
