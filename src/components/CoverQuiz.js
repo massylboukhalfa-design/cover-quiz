@@ -313,21 +313,24 @@ export default function CoverQuiz() {
   }, [input, current, found]);
 
   // ── Leaderboard ─────────────────────────────────────────────────────────────
-  const [lbMode, setLbMode] = useState("CROP");
+  const [lbMode,  setLbMode]  = useState("CROP");
+  const [lbGenre, setLbGenre] = useState("ALL");
 
-  const fetchLeaderboard = useCallback(async (m) => {
-    const { data } = await supabase
+  const fetchLeaderboard = useCallback(async (m, g) => {
+    let q = supabase
       .from("scores")
-      .select("player, score, genre, created_at")
+      .select("player, score, genre, mode, created_at")
       .eq("mode", m)
       .order("score", { ascending: false })
       .limit(10);
-    if (data) setLeaderboard(data);
+    if (g !== "ALL") q = q.eq("genre", g);
+    const { data, error } = await q;
+    if (!error && data) setLeaderboard(data);
   }, []);
 
   useEffect(() => {
-    if (screen === "end" || screen === "home") fetchLeaderboard(lbMode);
-  }, [screen, lbMode, fetchLeaderboard]);
+    if (screen === "end" || screen === "home") fetchLeaderboard(lbMode, lbGenre);
+  }, [screen, lbMode, lbGenre, fetchLeaderboard]);
 
 
   const submitScore = async () => {
@@ -486,10 +489,17 @@ export default function CoverQuiz() {
               <span style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-muted)" }}>🏆 TOP 10</span>
               <div style={{ flex: 1, height: 1, background: "var(--c-border)" }} />
             </div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+            <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
               {["CROP", "PIXEL"].map((m) => (
                 <button key={m} className={`pill ${lbMode === m ? "active" : ""}`} onClick={() => setLbMode(m)}>
                   {m === "CROP" ? "✂️ CROP" : "◼ PIXEL"}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+              {[{ key: "ALL", label: "🌍 TOUT" }, { key: "FR", label: "🇫🇷 FR" }, { key: "US", label: "🇺🇸 US" }].map(({ key, label }) => (
+                <button key={key} className={`pill ${lbGenre === key ? "active" : ""}`} onClick={() => setLbGenre(key)}>
+                  {label}
                 </button>
               ))}
             </div>
@@ -892,10 +902,17 @@ export default function CoverQuiz() {
               <span style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-muted)" }}>🏆 TOP 10</span>
               <div style={{ flex: 1, height: 1, background: "var(--c-border)" }} />
             </div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+            <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
               {["CROP", "PIXEL"].map((m) => (
                 <button key={m} className={`pill ${lbMode === m ? "active" : ""}`} onClick={() => setLbMode(m)}>
                   {m === "CROP" ? "✂️ CROP" : "◼ PIXEL"}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+              {[{ key: "ALL", label: "🌍 TOUT" }, { key: "FR", label: "🇫🇷 FR" }, { key: "US", label: "🇺🇸 US" }].map(({ key, label }) => (
+                <button key={key} className={`pill ${lbGenre === key ? "active" : ""}`} onClick={() => setLbGenre(key)}>
+                  {label}
                 </button>
               ))}
             </div>
