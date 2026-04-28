@@ -166,8 +166,8 @@ export default function CoverQuiz() {
   }, [albums]); // eslint-disable-line
 
   const launchGame = useCallback(() => {
-    const shuffled = shuffle(albums);
-    const [first, ...rest] = shuffled;
+    const pool = gameMode === "PIXEL" ? shuffle(albums).slice(0, 10) : shuffle(albums);
+    const [first, ...rest] = pool;
     setCurrent(first);
     setQueue(rest);
     setFound(false);
