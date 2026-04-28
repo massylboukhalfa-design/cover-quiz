@@ -134,6 +134,8 @@ export default function CoverQuiz() {
   const pixelRef    = useRef(null);
   const canvasRef   = useRef(null);
   const pixelImgRef = useRef(null);
+  const gameModeRef = useRef(gameMode);
+  useEffect(() => { gameModeRef.current = gameMode; }, [gameMode]);
 
   // ── Load albums ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -165,7 +167,7 @@ export default function CoverQuiz() {
   }, [launchGame]); // eslint-disable-line
 
   const launchGame = useCallback(() => {
-    const pool = gameMode === "PIXEL" ? shuffle(albums).slice(0, 10) : shuffle(albums);
+    const pool = gameModeRef.current === "PIXEL" ? shuffle(albums).slice(0, 10) : shuffle(albums);
     const [first, ...rest] = pool;
     setCurrent(first);
     setQueue(rest);
@@ -180,7 +182,7 @@ export default function CoverQuiz() {
     setImgReady(false);
     setCropPos(randomCrop());
     setScreen("game");
-  }, [albums, gameMode]);
+  }, [albums]);
 
   // ── Timer (CROP mode uniquement) ────────────────────────────────────────────
   useEffect(() => {
