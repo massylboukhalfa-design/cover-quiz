@@ -463,9 +463,19 @@ export default function CoverQuiz() {
               borderBottom: "1px solid var(--c-border)", padding: "16px 0", width: "100%",
               justifyContent: "center",
             }}>
-              <Stat label="ALBUMS" value={albums.length} />
-              <Stat label="DURÉE"  value="2:00" />
-              <Stat label="MAX"    value={`${albums.length} pts`} />
+              {isPixelMode(gameMode) ? (
+                <>
+                  <Stat label="COVERS"  value={10} />
+                  <Stat label="PAR COVER" value={`${PIXEL_REVEAL_DURATION}s`} />
+                  <Stat label="MAX"     value="100 pts" />
+                </>
+              ) : (
+                <>
+                  <Stat label="ALBUMS" value={albums.length} />
+                  <Stat label="DURÉE"  value="2:00" />
+                  <Stat label="MAX"    value={`${albums.length} pts`} />
+                </>
+              )}
             </div>
           )}
 
