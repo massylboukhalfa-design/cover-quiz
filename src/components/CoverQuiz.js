@@ -23,7 +23,7 @@ const isArtistMode = (m) => m === "CROP_ARTIST" || m === "PIXEL_ARTIST";
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const normalize = (s = "") =>
   s.toLowerCase()
-   .normalize("NFD").replace(/[̀-ͯ]/g, "")
+   .normalize("NFD").replace(/[\u0300-\u036f]/g, "")  // accents
    .replace(/[''`.\/\-_]/g, "")
    .replace(/[^a-z0-9\s]/g, " ")
    .replace(/\s+/g, " ")
@@ -140,6 +140,8 @@ export default function CoverQuiz() {
   const pixelRef    = useRef(null);
   const canvasRef   = useRef(null);
   const pixelImgRef = useRef(null);
+  const gameModeRef = useRef(gameMode);
+  gameModeRef.current = gameMode;
 
   // ── Load albums ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -172,7 +174,7 @@ export default function CoverQuiz() {
 
   const launchGame = useCallback(() => {
     const shuffled = shuffle(albums);
-    const pool = isPixelMode(gameMode) ? shuffled.slice(0, 10) : shuffled;
+    const pool = isPixelMode(gameModeRef.current) ? shuffled.slice(0, 10) : shuffled;
     const [first, ...rest] = pool;
     setCurrent(first);
     setQueue(rest);
@@ -188,7 +190,7 @@ export default function CoverQuiz() {
     setImgReady(false);
     setCropPos(randomCrop());
     setScreen("game");
-  }, [albums, gameMode]); // eslint-disable-line
+  }, [albums]);
 
   // ── Timer (CROP modes uniquement) ───────────────────────────────────────────
   useEffect(() => {
