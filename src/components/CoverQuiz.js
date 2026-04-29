@@ -271,6 +271,8 @@ export default function CoverQuiz() {
       { ...current, foundAlbum: found },
     ]);
     if (wasSkipped) setSkipped((s) => s + 1);
+    // Reset combo si la cover n'a pas été trouvée
+    if (!found) setCombo(0);
 
     if (queue.length === 0) {
       setScreen("end");
