@@ -297,8 +297,8 @@ export default function CoverQuiz() {
     const target = isArtistMode(gameMode) ? current.artist : current.album;
     if (isClose(val, target)) {
       const newCombo = combo + 1;
-      const mult = comboMultiplier(newCombo);
-      const pts = isPixelMode(gameMode) ? pixelScore(pixelElapsed) * mult : PTS * mult;
+      const mult = isPixelMode(gameMode) ? 1 : comboMultiplier(newCombo);
+      const pts = isPixelMode(gameMode) ? pixelScore(pixelElapsed) : PTS * mult;
       setCombo(newCombo);
       setFound(true);
       setScore((s) => s + pts);
@@ -595,26 +595,28 @@ export default function CoverQuiz() {
               <div style={{ fontSize: 10, color: "var(--c-muted)", letterSpacing: 2 }}>
                 POINTS
               </div>
-              {/* Combo */}
-              <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
-                <span style={{
-                  fontSize: 16,
-                  filter: combo === 0 ? "grayscale(1) opacity(0.3)" : "none",
-                  transition: "filter .3s",
-                }}>🔥</span>
-                <span style={{
-                  fontFamily: "var(--font-display)", fontSize: 18,
-                  color: combo >= 10 ? "orange" : combo >= 3 ? "var(--c-accent)" : "var(--c-muted)",
-                  transition: "color .3s",
-                }}>{combo}</span>
-                {combo >= 3 && (
+              {/* Combo — masqué en mode pixel */}
+              {!isPixelMode(gameMode) && (
+                <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
                   <span style={{
-                    fontSize: 9, letterSpacing: 1,
-                    color: combo >= 10 ? "orange" : "var(--c-accent)",
-                    fontFamily: "var(--font-mono)",
-                  }}>x{comboMultiplier(combo)}</span>
-                )}
-              </div>
+                    fontSize: 16,
+                    filter: combo === 0 ? "grayscale(1) opacity(0.3)" : "none",
+                    transition: "filter .3s",
+                  }}>🔥</span>
+                  <span style={{
+                    fontFamily: "var(--font-display)", fontSize: 18,
+                    color: combo >= 10 ? "orange" : combo >= 3 ? "var(--c-accent)" : "var(--c-muted)",
+                    transition: "color .3s",
+                  }}>{combo}</span>
+                  {combo >= 3 && (
+                    <span style={{
+                      fontSize: 9, letterSpacing: 1,
+                      color: combo >= 10 ? "orange" : "var(--c-accent)",
+                      fontFamily: "var(--font-mono)",
+                    }}>x{comboMultiplier(combo)}</span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Centre : timer (CROP) ou compteur covers (PIXEL) */}
