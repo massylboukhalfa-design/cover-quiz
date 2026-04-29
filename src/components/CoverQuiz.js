@@ -172,7 +172,8 @@ export default function CoverQuiz() {
 
   const launchGame = useCallback(() => {
     const shuffled = shuffle(albums);
-    const [first, ...rest] = shuffled;
+    const pool = isPixelMode(gameMode) ? shuffled.slice(0, 10) : shuffled;
+    const [first, ...rest] = pool;
     setCurrent(first);
     setQueue(rest);
     setFound(false);
@@ -187,7 +188,7 @@ export default function CoverQuiz() {
     setImgReady(false);
     setCropPos(randomCrop());
     setScreen("game");
-  }, [albums]);
+  }, [albums, gameMode]); // eslint-disable-line
 
   // ── Timer (CROP modes uniquement) ───────────────────────────────────────────
   useEffect(() => {
