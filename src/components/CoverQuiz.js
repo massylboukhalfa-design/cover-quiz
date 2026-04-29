@@ -100,9 +100,6 @@ function pixelScore(elapsed) {
   return Math.max(20, Math.round(1 + 99 * (1 / (1 + PIXEL_K * t))));
 }
 
-// ── Combo multiplier ─────────────────────────────────────────────────────────
-const comboMultiplier = (c) => c >= 10 ? 3 : c >= 3 ? 2 : 1;
-
 export default function CoverQuiz() {
   // screens: home | countdown | game | end
   const [screen, setScreen]       = useState("home");
@@ -124,7 +121,6 @@ export default function CoverQuiz() {
   const [cropPos, setCropPos]     = useState(CORNERS[0]);
   const [countdown, setCountdown] = useState(3);
   const [skipped, setSkipped]     = useState(0);
-  const [combo, setCombo]           = useState(0);
   const [playerName, setPlayerName] = useState("");
   const [submitted, setSubmitted]   = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -179,7 +175,6 @@ export default function CoverQuiz() {
     setScore(0);
     setHistory([]);
     setSkipped(0);
-    setCombo(0);
     setPlayerName("");
     setSubmitted(false);
     setTimeLeft(GAME_DURATION);
@@ -271,8 +266,6 @@ export default function CoverQuiz() {
       { ...current, foundAlbum: found },
     ]);
     if (wasSkipped) setSkipped((s) => s + 1);
-    // Reset combo si la cover n'a pas été trouvée
-    if (!found) setCombo(0);
 
     if (queue.length === 0) {
       setScreen("end");
@@ -293,10 +286,7 @@ export default function CoverQuiz() {
     if (gameMode === "PIXEL" && pixelStep >= PIXEL_STEPS) return;
 
     if (isClose(val, current.album)) {
-      const newCombo = combo + 1;
-      const mult = comboMultiplier(newCombo);
-      const pts = gameMode === "PIXEL" ? pixelScore(pixelElapsed) * mult : PTS * mult;
-      setCombo(newCombo);
+      const pts = gameMode === "PIXEL" ? pixelScore(pixelElapsed) : PTS;
       setFound(true);
       setScore((s) => s + pts);
     } else {
@@ -306,21 +296,22 @@ export default function CoverQuiz() {
 
     setInput("");
     inputRef.current?.focus();
-  }, [input, current, found, gameMode, pixelStep, pixelElapsed, combo]);
+  }, [input, current, found, gameMode, pixelStep, pixelElapsed]);
 
   // ── Leaderboard ─────────────────────────────────────────────────────────────
   const fetchLeaderboard = useCallback(async () => {
     const { data } = await supabase
       .from("scores")
-      .select("player, score, genre, created_at")
+      .select("player, score, genre, game_mode, created_at")
+      .eq("game_mode", gameMode)
       .order("score", { ascending: false })
       .limit(10);
     if (data) setLeaderboard(data);
-  }, []);
+  }, [gameMode]);
 
   useEffect(() => {
     if (screen === "end" || screen === "home") fetchLeaderboard();
-  }, [screen, fetchLeaderboard]);
+  }, [screen, gameMode, fetchLeaderboard]);
 
   const submitScore = async () => {
     if (!playerName.trim() || submitted || score === 0) return;
@@ -329,6 +320,7 @@ export default function CoverQuiz() {
       player: playerName.trim().toUpperCase(),
       score,
       genre,
+      game_mode: gameMode,
     });
     setSubmitted(true);
     setSubmitting(false);
@@ -567,29 +559,6 @@ export default function CoverQuiz() {
               </div>
               <div style={{ fontSize: 10, color: "var(--c-muted)", letterSpacing: 2 }}>
                 POINTS
-              </div>
-              {/* Combo */}
-              <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
-                <span style={{
-                  fontSize: 16,
-                  filter: combo === 0 ? "grayscale(1) opacity(0.3)" : "none",
-                  transition: "filter .3s",
-                }}>
-                  🔥
-                </span>
-                <span style={{
-                  fontFamily: "var(--font-display)",
-                  fontSize: 18,
-                  color: combo >= 10 ? "orange" : combo >= 3 ? "var(--c-accent)" : "var(--c-muted)",
-                  transition: "color .3s",
-                }}>
-                  {combo}
-                </span>
-                {combo >= 3 && (
-                  <span style={{ fontSize: 9, letterSpacing: 1, color: combo >= 10 ? "orange" : "var(--c-accent)", fontFamily: "var(--font-mono)" }}>
-                    x{comboMultiplier(combo)}
-                  </span>
-                )}
               </div>
             </div>
 
