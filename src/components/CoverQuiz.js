@@ -13,15 +13,19 @@ const SKIP_PENALTY         = 0;
 // PIXEL mode
 const PIXEL_REVEAL_DURATION = 20;        // secondes pour révélation complète
 const PIXEL_STEPS           = 10;        // nombre d'étapes
-const PIXEL_STEP_DURATION   = PIXEL_REVEAL_DURATION / PIXEL_STEPS; // 3s par étape
+const PIXEL_STEP_DURATION   = PIXEL_REVEAL_DURATION / PIXEL_STEPS;
 const PIXEL_SIZES           = [4, 6, 8, 12, 16, 24, 32, 48, 64, 128, 380];
+
+// ── Mode helpers ──────────────────────────────────────────────────────────────
+const isPixelMode  = (m) => m === "PIXEL" || m === "PIXEL_ARTIST";
+const isArtistMode = (m) => m === "CROP_ARTIST" || m === "PIXEL_ARTIST";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const normalize = (s = "") =>
   s.toLowerCase()
-   .normalize("NFD").replace(/[\u0300-\u036f]/g, "")  // accents
-   .replace(/[''`.\/\-_]/g, "")                        // points, tirets, slashes → rien (R.A.S → ras)
-   .replace(/[^a-z0-9\s]/g, " ")                        // reste → espace
+   .normalize("NFD").replace(/[̀-ͯ]/g, "")
+   .replace(/[''`.\/\-_]/g, "")
+   .replace(/[^a-z0-9\s]/g, " ")
    .replace(/\s+/g, " ")
    .trim();
 
@@ -50,14 +54,10 @@ const isClose = (input, target) => {
   const b = normalize(target);
   if (!a || a.length < 2) return false;
   if (a === b) return true;
-  // Un mot du target matche exactement (ex: "kendrick" → "Kendrick Lamar")
   const bWords = b.split(" ");
   if (bWords.some(w => w === a && a.length >= 3)) return true;
-  // Préfixe (ex: "kendrick lam")
   if (b.startsWith(a) && a.length >= 4) return true;
-  // Levenshtein global
   if (levenshtein(a, b) <= maxDist(b.length)) return true;
-  // Levenshtein mot par mot
   const aWords = a.split(" ");
   if (aWords.length > 1 && bWords.length > 1) {
     const allMatch = aWords.every((aw, i) => {
@@ -72,13 +72,11 @@ const isClose = (input, target) => {
 const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
 
 // ── Crop aléatoire — 1/4 visible, coin aléatoire ─────────────────────────────
-// Le div interne fait 200%x200%, positionné sur le coin choisi.
-// overflow:hidden sur le parent = seul 1/4 est visible.
 const CORNERS = [
-  { top: "0",    left: "0",    bottom: "auto", right: "auto"  }, // haut-gauche
-  { top: "0",    left: "auto", bottom: "auto", right: "0"     }, // haut-droit
-  { top: "auto", left: "0",    bottom: "0",    right: "auto"  }, // bas-gauche
-  { top: "auto", left: "auto", bottom: "0",    right: "0"     }, // bas-droit
+  { top: "0",    left: "0",    bottom: "auto", right: "auto"  },
+  { top: "0",    left: "auto", bottom: "auto", right: "0"     },
+  { top: "auto", left: "0",    bottom: "0",    right: "auto"  },
+  { top: "auto", left: "auto", bottom: "0",    right: "0"     },
 ];
 const randomCrop = () => CORNERS[Math.floor(Math.random() * CORNERS.length)];
 
@@ -106,9 +104,13 @@ export default function CoverQuiz() {
   // screens: home | countdown | game | end
   const [screen, setScreen]       = useState("home");
   const [genre, setGenre]         = useState("ALL");
-  const [gameMode, setGameMode]   = useState("CROP"); // CROP | PIXEL
+  const [displayMode, setDisplayMode] = useState("CROP");  // CROP | PIXEL
+  const [guessTarget, setGuessTarget] = useState("ALBUM"); // ALBUM | ARTIST
   const [albums, setAlbums]       = useState([]);
   const [loading, setLoading]     = useState(true);
+
+  // gameMode est dérivé des deux sélecteurs → leaderboard auto-séparé
+  const gameMode = displayMode + (guessTarget === "ARTIST" ? "_ARTIST" : "");
 
   // game state
   const [queue, setQueue]         = useState([]);
@@ -187,9 +189,9 @@ export default function CoverQuiz() {
     setScreen("game");
   }, [albums]);
 
-  // ── Timer (CROP mode uniquement) ────────────────────────────────────────────
+  // ── Timer (CROP modes uniquement) ───────────────────────────────────────────
   useEffect(() => {
-    if (screen !== "game" || gameMode !== "CROP") return;
+    if (screen !== "game" || isPixelMode(gameMode)) return;
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) {
@@ -205,7 +207,7 @@ export default function CoverQuiz() {
 
   // ── Pixel timer — reset + progression par album ─────────────────────────────
   useEffect(() => {
-    if (screen !== "game" || gameMode !== "PIXEL") return;
+    if (screen !== "game" || !isPixelMode(gameMode)) return;
     clearInterval(pixelRef.current);
     setPixelStep(0);
     setPixelElapsed(0);
@@ -237,9 +239,8 @@ export default function CoverQuiz() {
     setImgReady(true);
   }, []);
 
-  // Redessine à chaque étape (l'img DOM est dans pixelImgRef)
   useEffect(() => {
-    if (gameMode !== "PIXEL") return;
+    if (!isPixelMode(gameMode)) return;
     drawPixelated(pixelImgRef.current, getPixelSize(pixelStep));
   }, [pixelStep, gameMode, drawPixelated]);
 
@@ -258,7 +259,7 @@ export default function CoverQuiz() {
 
   // ── Auto-advance when PIXEL fully revealed without answer ────────────────────
   useEffect(() => {
-    if (gameMode !== "PIXEL" || pixelStep < PIXEL_STEPS || found) return;
+    if (!isPixelMode(gameMode) || pixelStep < PIXEL_STEPS || found) return;
     const t = setTimeout(() => advance(true), 2000);
     return () => clearTimeout(t);
   }, [pixelStep, gameMode, found]); // eslint-disable-line
@@ -267,7 +268,7 @@ export default function CoverQuiz() {
   const advance = useCallback((wasSkipped = false) => {
     setHistory((h) => [
       ...h,
-      { ...current, foundAlbum: found },
+      { ...current, foundIt: found },
     ]);
     if (wasSkipped) setSkipped((s) => s + 1);
     if (!found) setCombo(0);
@@ -288,12 +289,13 @@ export default function CoverQuiz() {
   const handleGuess = useCallback(() => {
     const val = input.trim();
     if (!val || !current || found) return;
-    if (gameMode === "PIXEL" && pixelStep >= PIXEL_STEPS) return;
+    if (isPixelMode(gameMode) && pixelStep >= PIXEL_STEPS) return;
 
-    if (isClose(val, current.album)) {
+    const target = isArtistMode(gameMode) ? current.artist : current.album;
+    if (isClose(val, target)) {
       const newCombo = combo + 1;
       const mult = comboMultiplier(newCombo);
-      const pts = gameMode === "PIXEL" ? pixelScore(pixelElapsed) * mult : PTS * mult;
+      const pts = isPixelMode(gameMode) ? pixelScore(pixelElapsed) * mult : PTS * mult;
       setCombo(newCombo);
       setFound(true);
       setScore((s) => s + pts);
@@ -382,7 +384,7 @@ export default function CoverQuiz() {
               QUIZ
             </div>
             <p style={{ color: "var(--c-muted)", fontSize: 12, letterSpacing: 2, marginTop: 8 }}>
-              {gameMode === "PIXEL" ? "10 COVERS — LE PLUS VITE POSSIBLE" : "2 MINUTES — AUTANT QUE POSSIBLE"}
+              {isPixelMode(gameMode) ? "10 COVERS — LE PLUS VITE POSSIBLE" : "2 MINUTES — AUTANT QUE POSSIBLE"}
             </p>
           </div>
 
@@ -408,7 +410,7 @@ export default function CoverQuiz() {
             </div>
           </div>
 
-          {/* Game mode filter */}
+          {/* Display mode */}
           <div>
             <p style={{ color: "var(--c-muted)", fontSize: 11, letterSpacing: 2, textAlign: "center", marginBottom: 12 }}>
               STYLE D'INDICE
@@ -420,8 +422,29 @@ export default function CoverQuiz() {
               ].map(({ key, label }) => (
                 <button
                   key={key}
-                  className={`pill ${gameMode === key ? "active" : ""}`}
-                  onClick={() => setGameMode(key)}
+                  className={`pill ${displayMode === key ? "active" : ""}`}
+                  onClick={() => setDisplayMode(key)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Guess target */}
+          <div>
+            <p style={{ color: "var(--c-muted)", fontSize: 11, letterSpacing: 2, textAlign: "center", marginBottom: 12 }}>
+              DEVINER
+            </p>
+            <div style={{ display: "flex", gap: 8 }}>
+              {[
+                { key: "ALBUM",  label: "💿 ALBUM" },
+                { key: "ARTIST", label: "🎤 ARTISTE" },
+              ].map(({ key, label }) => (
+                <button
+                  key={key}
+                  className={`pill ${guessTarget === key ? "active" : ""}`}
+                  onClick={() => setGuessTarget(key)}
                 >
                   {label}
                 </button>
@@ -447,15 +470,15 @@ export default function CoverQuiz() {
             fontSize: 11, color: "var(--c-muted)", lineHeight: 1.8,
             letterSpacing: 1, width: "100%",
           }}>
-            {gameMode === "PIXEL" ? (
+            {isPixelMode(gameMode) ? (
               <>
                 <div>→ Cover révélée en {PIXEL_STEPS} étapes sur {PIXEL_REVEAL_DURATION}s</div>
                 <div>→ Plus vite tu trouves, plus tu scores (max 100pts)</div>
-                <div>→ ENTRÉE pour valider — tolérance aux fautes</div>
+                <div>→ Trouve l'{isArtistMode(gameMode) ? "ARTISTE" : "ALBUM"} — tolérance aux fautes</div>
               </>
             ) : (
               <>
-                <div>→ +{PTS} pt par album trouvé</div>
+                <div>→ +{PTS} pt par {isArtistMode(gameMode) ? "artiste" : "album"} trouvé</div>
                 <div>→ ENTRÉE pour valider — tolérance aux fautes</div>
               </>
             )}
@@ -592,7 +615,7 @@ export default function CoverQuiz() {
 
             {/* Centre : timer (CROP) ou compteur covers (PIXEL) */}
             <div style={{ flex: 1, padding: "0 16px", textAlign: "center" }}>
-              {gameMode === "CROP" ? (
+              {!isPixelMode(gameMode) ? (
                 <>
                   <div style={{
                     fontFamily: "var(--font-display)",
@@ -623,7 +646,7 @@ export default function CoverQuiz() {
             </div>
 
             {/* Queue (CROP uniquement) */}
-            {gameMode === "CROP" && (
+            {!isPixelMode(gameMode) && (
               <div style={{ minWidth: 70, textAlign: "right" }}>
                 <div style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--c-muted)" }}>
                   {queue.length + 1}
@@ -657,7 +680,7 @@ export default function CoverQuiz() {
               }} />
             )}
 
-            {gameMode === "CROP" ? (
+            {!isPixelMode(gameMode) ? (
               /* Div zoomé x2 — overflow:hidden = 1/4 visible */
               <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
                 <div style={{
@@ -711,7 +734,7 @@ export default function CoverQuiz() {
             )}
 
             {/* Overlay révélation PIXEL */}
-            {gameMode === "PIXEL" && pixelStep >= PIXEL_STEPS && !found && (
+            {isPixelMode(gameMode) && pixelStep >= PIXEL_STEPS && !found && (
               <div style={{
                 position: "absolute", inset: 0,
                 display: "flex", alignItems: "center", justifyContent: "center",
@@ -729,7 +752,7 @@ export default function CoverQuiz() {
                     fontFamily: "var(--font-display)", fontSize: 18,
                     color: "var(--c-accent)", letterSpacing: 2,
                   }}>
-                    {current.album}
+                    {isArtistMode(gameMode) ? current.artist : current.album}
                   </div>
                 </div>
               </div>
@@ -747,7 +770,7 @@ export default function CoverQuiz() {
           </div>
 
           {/* Pixel progress bar */}
-          {gameMode === "PIXEL" && (
+          {isPixelMode(gameMode) && (
             <div style={{ width: "100%", height: 3, background: "var(--c-border)" }}>
               <div style={{
                 height: "100%",
@@ -761,8 +784,12 @@ export default function CoverQuiz() {
           {/* Answer tags */}
           <div style={{ display: "flex", gap: 8, width: "100%" }}>
             <div className={`answer-tag ${found ? "found" : ""}`}>
-              <span>{found ? current.album : "ALBUM ?"}</span>
-              {gameMode === "PIXEL"
+              <span>
+                {found
+                  ? (isArtistMode(gameMode) ? current.artist : current.album)
+                  : (isArtistMode(gameMode) ? "ARTISTE ?" : "ALBUM ?")}
+              </span>
+              {isPixelMode(gameMode)
                 ? <span style={{ fontSize: 10, opacity: .5 }}>max {pixelScore(0)}pts → 1pt</span>
                 : <span style={{ fontSize: 10, opacity: .5 }}>+{PTS}pt</span>
               }
@@ -771,7 +798,7 @@ export default function CoverQuiz() {
 
           {/* Input */}
           {(() => {
-            const revealed = gameMode === "PIXEL" && pixelStep >= PIXEL_STEPS;
+            const revealed = isPixelMode(gameMode) && pixelStep >= PIXEL_STEPS;
             return (
               <div style={{ display: "flex", gap: 0, width: "100%" }}>
                 <input
@@ -779,7 +806,9 @@ export default function CoverQuiz() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleGuess(); }}
-                  placeholder={revealed ? current.album : "Tape ta réponse…"}
+                  placeholder={revealed
+                    ? (isArtistMode(gameMode) ? current.artist : current.album)
+                    : "Tape ta réponse…"}
                   className="quiz-input"
                   autoComplete="off"
                   autoCorrect="off"
@@ -793,7 +822,7 @@ export default function CoverQuiz() {
           })()}
 
           {/* Skip */}
-          {!(gameMode === "PIXEL" && pixelStep >= PIXEL_STEPS) && (
+          {!(isPixelMode(gameMode) && pixelStep >= PIXEL_STEPS) && (
             <button
               onClick={() => advance(true)}
               style={{
@@ -843,7 +872,7 @@ export default function CoverQuiz() {
             borderTop: "1px solid var(--c-border)", borderBottom: "1px solid var(--c-border)",
             padding: "16px 0", width: "100%", justifyContent: "center",
           }}>
-            <Stat label="TROUVÉS" value={history.filter((a) => a.foundAlbum).length} />
+            <Stat label="TROUVÉS" value={history.filter((a) => a.foundIt).length} />
             <Stat label="PASSÉS"  value={skipped} />
           </div>
 
@@ -852,19 +881,19 @@ export default function CoverQuiz() {
             <div style={{ width: "100%" }}>
 
               {/* Trouvées */}
-              {history.filter(a => a.foundAlbum).length > 0 && (
+              {history.filter(a => a.foundIt).length > 0 && (
                 <div style={{ marginBottom: 20 }}>
                   <div style={{
                     display: "flex", alignItems: "center", gap: 8, marginBottom: 10,
                   }}>
                     <div style={{ flex: 1, height: 1, background: "var(--c-border)" }} />
                     <span style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-gold)" }}>
-                      ✓ TROUVÉS — {history.filter(a => a.foundAlbum).length}
+                      ✓ TROUVÉS — {history.filter(a => a.foundIt).length}
                     </span>
                     <div style={{ flex: 1, height: 1, background: "var(--c-border)" }} />
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {history.filter(a => a.foundAlbum).map((a) => (
+                    {history.filter(a => a.foundIt).map((a) => (
                       <div key={a.id} style={{
                         display: "flex", alignItems: "center", gap: 12,
                         padding: "8px 10px",
@@ -879,8 +908,16 @@ export default function CoverQuiz() {
                             fontSize: 13, fontWeight: 700, color: "var(--c-gold)",
                             whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                           }}>
-                            {a.album}
+                            {isArtistMode(gameMode) ? a.artist : a.album}
                           </div>
+                          {isArtistMode(gameMode) && (
+                            <div style={{
+                              fontSize: 10, color: "var(--c-muted)",
+                              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                            }}>
+                              {a.album}
+                            </div>
+                          )}
                         </div>
                         <div style={{
                           fontFamily: "var(--font-display)", fontSize: 18, color: "var(--c-gold)",
@@ -894,19 +931,19 @@ export default function CoverQuiz() {
               )}
 
               {/* Passées */}
-              {history.filter(a => !a.foundAlbum).length > 0 && (
+              {history.filter(a => !a.foundIt).length > 0 && (
                 <div>
                   <div style={{
                     display: "flex", alignItems: "center", gap: 8, marginBottom: 10,
                   }}>
                     <div style={{ flex: 1, height: 1, background: "var(--c-border)" }} />
                     <span style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-muted)" }}>
-                      ✗ PASSÉS — {history.filter(a => !a.foundAlbum).length}
+                      ✗ PASSÉS — {history.filter(a => !a.foundIt).length}
                     </span>
                     <div style={{ flex: 1, height: 1, background: "var(--c-border)" }} />
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {history.filter(a => !a.foundAlbum).map((a) => (
+                    {history.filter(a => !a.foundIt).map((a) => (
                       <div key={a.id} style={{
                         display: "flex", alignItems: "center", gap: 12,
                         padding: "8px 10px",
@@ -922,8 +959,16 @@ export default function CoverQuiz() {
                             fontSize: 13, fontWeight: 700, color: "var(--c-text)",
                             whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                           }}>
-                            {a.album}
+                            {isArtistMode(gameMode) ? a.artist : a.album}
                           </div>
+                          {isArtistMode(gameMode) && (
+                            <div style={{
+                              fontSize: 10, color: "var(--c-muted)",
+                              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                            }}>
+                              {a.album}
+                            </div>
+                          )}
                         </div>
                         <div style={{ fontSize: 11, color: "var(--c-muted)" }}>—</div>
                       </div>
