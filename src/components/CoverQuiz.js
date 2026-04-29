@@ -314,14 +314,15 @@ export default function CoverQuiz() {
       .from("scores")
       .select("player, score, genre, game_mode, created_at")
       .eq("game_mode", gameMode)
+      .eq("genre", genre)
       .order("score", { ascending: false })
       .limit(10);
     if (data) setLeaderboard(data);
-  }, [gameMode]);
+  }, [gameMode, genre]);
 
   useEffect(() => {
     if (screen === "end" || screen === "home") fetchLeaderboard();
-  }, [screen, gameMode, fetchLeaderboard]);
+  }, [screen, gameMode, genre, fetchLeaderboard]);
 
   const submitScore = async () => {
     if (!playerName.trim() || submitted || score === 0) return;
