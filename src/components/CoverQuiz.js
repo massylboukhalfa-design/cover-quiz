@@ -14,7 +14,6 @@ const SKIP_PENALTY         = 0;
 const PIXEL_REVEAL_DURATION = 20;        // secondes pour révélation complète
 const PIXEL_STEPS           = 10;        // nombre d'étapes
 const PIXEL_STEP_DURATION   = PIXEL_REVEAL_DURATION / PIXEL_STEPS; // 3s par étape
-const PIXEL_K               = 9;         // constante courbe hyperbolique
 const PIXEL_SIZES           = [4, 6, 8, 12, 16, 24, 32, 48, 64, 128, 380];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -94,10 +93,10 @@ function getPixelSize(step) {
   return PIXEL_SIZES[Math.min(step, PIXEL_SIZES.length - 1)];
 }
 
-// ── Hyperbolic score (1/x curve) ─────────────────────────────────────────────
+// ── Linear score (100 → 20) ───────────────────────────────────────────────────
 function pixelScore(elapsed) {
   const t = Math.min(elapsed / PIXEL_REVEAL_DURATION, 1);
-  return Math.max(20, Math.round(1 + 99 * (1 / (1 + PIXEL_K * t))));
+  return Math.max(20, Math.round(100 - 80 * t));
 }
 
 // ── Combo multiplier ─────────────────────────────────────────────────────────
