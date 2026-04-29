@@ -302,11 +302,20 @@ export default function CoverQuiz() {
   const fetchLeaderboard = useCallback(async () => {
     const { data } = await supabase
       .from("scores")
-      .select("player, score, genre, created_at")
+      .select("player, score, genre, game_mode, created_at")
+      .eq("game_mode", gameMode)
       .order("score", { ascending: false })
-      .limit(10);
-    if (data) setLeaderboard(data);
-  }, []);
+      .limit(200);
+    if (data) {
+      const seen = new Set();
+      const deduped = data.filter(e => {
+        if (seen.has(e.player)) return false;
+        seen.add(e.player);
+        return true;
+      }).slice(0, 10);
+      setLeaderboard(deduped);
+    }
+  }, [gameMode]);
 
   useEffect(() => {
     if (screen === "end" || screen === "home") fetchLeaderboard();
