@@ -319,8 +319,14 @@ export default function CoverQuiz() {
       .eq("game_mode", gameMode)
       .eq("genre", genre)
       .order("score", { ascending: false })
-      .limit(10);
-    if (data) setLeaderboard(data);
+      .limit(100);
+    if (data) {
+      const seen = new Map();
+      for (const entry of data) {
+        if (!seen.has(entry.player)) seen.set(entry.player, entry);
+      }
+      setLeaderboard([...seen.values()].slice(0, 10));
+    }
   }, [gameMode, genre]);
 
   useEffect(() => {
