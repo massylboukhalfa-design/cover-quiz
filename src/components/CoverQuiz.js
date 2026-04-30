@@ -352,7 +352,8 @@ export default function CoverQuiz() {
   // ── Report cover issue ───────────────────────────────────────────────────────
   const reportIssue = async () => {
     if (!current || reported) return;
-    await supabase.from("albums").update({ issue: "cover_reported" }).eq("id", current.id);
+    const { error } = await supabase.from("albums").update({ issue: "cover_reported" }).eq("id", current.id);
+    if (error) { console.error("reportIssue:", error); return; }
     setReported(true);
   };
 
