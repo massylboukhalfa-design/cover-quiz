@@ -133,6 +133,7 @@ export default function CoverQuiz() {
 
   const [pixelStep,    setPixelStep]    = useState(0);
   const [pixelElapsed, setPixelElapsed] = useState(0);
+  const [reported,     setReported]     = useState(false);
 
   const inputRef    = useRef(null);
   const timerRef    = useRef(null);
@@ -275,6 +276,7 @@ export default function CoverQuiz() {
     ]);
     if (wasSkipped) setSkipped((s) => s + 1);
     if (!found) setCombo(0);
+    setReported(false);
 
     if (queue.length === 0) {
       setScreen("end");
@@ -345,6 +347,13 @@ export default function CoverQuiz() {
     setSubmitted(true);
     setSubmitting(false);
     fetchLeaderboard();
+  };
+
+  // ── Report cover issue ───────────────────────────────────────────────────────
+  const reportIssue = async () => {
+    if (!current || reported) return;
+    await supabase.from("albums").update({ issue: "cover_reported" }).eq("id", current.id);
+    setReported(true);
   };
 
   // ── Timer color ──────────────────────────────────────────────────────────────
@@ -789,6 +798,25 @@ export default function CoverQuiz() {
             }}>
               {current.genre}
             </div>
+
+            {/* Report cover */}
+            <button
+              onClick={reportIssue}
+              disabled={reported}
+              title="Signaler un problème de cover"
+              style={{
+                position: "absolute", bottom: 8, left: 8,
+                background: reported ? "rgba(0,0,0,0.6)" : "rgba(0,0,0,0.45)",
+                border: `1px solid ${reported ? "var(--c-gold)" : "var(--c-border)"}`,
+                color: reported ? "var(--c-gold)" : "var(--c-muted)",
+                fontFamily: "var(--font-mono)", fontSize: 10,
+                padding: "3px 7px", letterSpacing: 1,
+                cursor: reported ? "default" : "pointer",
+                transition: "all .2s",
+              }}
+            >
+              {reported ? "✓ SIGNALÉ" : "⚠ COVER"}
+            </button>
           </div>
 
           {/* Pixel progress bar */}
