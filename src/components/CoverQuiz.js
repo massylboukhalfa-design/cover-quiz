@@ -868,7 +868,7 @@ export default function CoverQuiz() {
                   letterSpacing: 2, transition: "color .2s",
                 }}
               >
-                {reported ? "✓ SIGNALÉ" : "⚠ COVER"}
+                {reported ? "✓ SIGNALÉ" : "⚠ SIGNALER COVER"}
               </button>
               <button
                 onClick={() => advance(true)}
