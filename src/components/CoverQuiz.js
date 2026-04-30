@@ -799,24 +799,6 @@ export default function CoverQuiz() {
               {current.genre}
             </div>
 
-            {/* Report cover */}
-            <button
-              onClick={reportIssue}
-              disabled={reported}
-              title="Signaler un problème de cover"
-              style={{
-                position: "absolute", bottom: 8, left: 8,
-                background: reported ? "rgba(0,0,0,0.6)" : "rgba(0,0,0,0.45)",
-                border: `1px solid ${reported ? "var(--c-gold)" : "var(--c-border)"}`,
-                color: reported ? "var(--c-gold)" : "var(--c-muted)",
-                fontFamily: "var(--font-mono)", fontSize: 10,
-                padding: "3px 7px", letterSpacing: 1,
-                cursor: reported ? "default" : "pointer",
-                transition: "all .2s",
-              }}
-            >
-              {reported ? "✓ SIGNALÉ" : "⚠ COVER"}
-            </button>
           </div>
 
           {/* Pixel progress bar */}
@@ -871,19 +853,34 @@ export default function CoverQuiz() {
             );
           })()}
 
-          {/* Skip */}
+          {/* Skip + Report */}
           {!(isPixelMode(gameMode) && pixelStep >= PIXEL_STEPS) && (
-            <button
-              onClick={() => advance(true)}
-              style={{
-                background: "none", border: "none",
-                color: "var(--c-muted)", cursor: "pointer",
-                fontFamily: "var(--font-mono)", fontSize: 11,
-                letterSpacing: 2,
-              }}
-            >
-              PASSER ⟩
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <button
+                onClick={reportIssue}
+                disabled={reported}
+                style={{
+                  background: "none", border: "none",
+                  color: reported ? "var(--c-gold)" : "var(--c-muted)",
+                  cursor: reported ? "default" : "pointer",
+                  fontFamily: "var(--font-mono)", fontSize: 11,
+                  letterSpacing: 2, transition: "color .2s",
+                }}
+              >
+                {reported ? "✓ SIGNALÉ" : "⚠ COVER"}
+              </button>
+              <button
+                onClick={() => advance(true)}
+                style={{
+                  background: "none", border: "none",
+                  color: "var(--c-muted)", cursor: "pointer",
+                  fontFamily: "var(--font-mono)", fontSize: 11,
+                  letterSpacing: 2,
+                }}
+              >
+                PASSER ⟩
+              </button>
+            </div>
           )}
         </div>
       )}
