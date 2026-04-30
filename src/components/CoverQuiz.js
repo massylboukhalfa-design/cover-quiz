@@ -855,7 +855,7 @@ export default function CoverQuiz() {
 
           {/* Skip + Report */}
           {!(isPixelMode(gameMode) && pixelStep >= PIXEL_STEPS) && (
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 40 }}>
               <button
                 onClick={reportIssue}
                 disabled={reported}
