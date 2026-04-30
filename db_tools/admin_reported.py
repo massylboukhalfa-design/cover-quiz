@@ -1,196 +1,168 @@
 """
-Outil de nettoyage des covers signalées
-========================================
-pip install rich python-dotenv supabase
+Cover Quiz — Admin covers signalées
+=====================================
+pip install streamlit pandas python-dotenv supabase
+streamlit run db_tools/admin_reported.py
 """
 
 import os
+import pandas as pd
+import streamlit as st
 from dotenv import load_dotenv
 from supabase import create_client
-from rich.console import Console
-from rich.table import Table
-from rich.prompt import Prompt, Confirm
-from rich import box
-from rich.panel import Panel
 
 load_dotenv()
 
-SUPABASE_URL = os.environ["SUPABASE_URL"]
-SUPABASE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
+# ── Page ──────────────────────────────────────────────────────────────────────
+st.set_page_config(
+    page_title="Cover Quiz — Admin",
+    page_icon="🎵",
+    layout="wide",
+)
 
-console = Console()
+st.markdown("""
+<style>
+    .block-container { padding-top: 2rem; }
+    [data-testid="stDataEditor"] { border-radius: 8px; }
+</style>
+""", unsafe_allow_html=True)
 
-EDITABLE_FIELDS = {
-    "1": ("artist",    "Artiste"),
-    "2": ("album",     "Album"),
-    "3": ("genre",     "Genre (FR / US)"),
-    "4": ("cover_url", "URL de la cover"),
-}
+# ── Client ────────────────────────────────────────────────────────────────────
+@st.cache_resource
+def get_client():
+    return create_client(
+        os.environ["SUPABASE_URL"],
+        os.environ["SUPABASE_SERVICE_KEY"],
+    )
 
-
-# ── Supabase ──────────────────────────────────────────────────────────────────
-
-def get_reported(sb):
+@st.cache_data(ttl=0)
+def fetch_reported():
     res = (
-        sb.table("albums")
+        get_client()
+        .table("albums")
         .select("id,artist,album,genre,cover_url,issue")
         .not_.is_("issue", "null")
         .execute()
     )
     return res.data
 
+# ── Header ────────────────────────────────────────────────────────────────────
+st.title("🎵 Cover Quiz — Admin")
+st.caption("Gestion des covers signalées")
 
-def save_album(sb, album_id, updates):
-    sb.table("albums").update(updates).eq("id", album_id).execute()
+if st.button("🔄 Rafraîchir", type="secondary"):
+    st.cache_data.clear()
+    st.rerun()
 
+st.divider()
 
-def clear_issue(sb, album_id):
-    sb.table("albums").update({"issue": None}).eq("id", album_id).execute()
+data = fetch_reported()
 
+if not data:
+    st.success("✅ Aucun album signalé — base propre.")
+    st.stop()
 
-def delete_album(sb, album_id):
-    sb.table("albums").delete().eq("id", album_id).execute()
+# ── Métriques ─────────────────────────────────────────────────────────────────
+col_m1, col_m2, col_m3 = st.columns(3)
+col_m1.metric("Albums signalés", len(data))
+col_m2.metric("Artistes concernés", len({a["artist"] for a in data}))
+col_m3.metric("Genres", len({a["genre"] for a in data}))
 
+st.divider()
 
-# ── Affichage ─────────────────────────────────────────────────────────────────
+# ── Table éditable ────────────────────────────────────────────────────────────
+st.subheader("Albums signalés")
+st.caption("Modifie directement les cellules, coche 🗑 pour marquer à supprimer, puis applique les actions.")
 
-def show_table(albums):
-    t = Table(box=box.ROUNDED, show_header=True, header_style="bold cyan", expand=False)
-    t.add_column("#",        style="dim",    width=3,  justify="right")
-    t.add_column("ID",       style="dim",    width=5)
-    t.add_column("Artiste",               width=22)
-    t.add_column("Album",                 width=32)
-    t.add_column("Genre",                 width=6,  justify="center")
-    t.add_column("Issue",    style="yellow", width=16)
+df_orig = pd.DataFrame(data)
+df_edit = df_orig.copy()
+df_edit.insert(0, "🗑", False)
 
-    for i, a in enumerate(albums, 1):
-        t.add_row(
-            str(i),
-            str(a["id"]),
-            a["artist"],
-            a["album"],
-            a["genre"],
-            a.get("issue") or "",
-        )
-    console.print(t)
-
-
-def show_album_detail(a):
-    console.print(Panel(
-        f"[bold]{a['artist']} — {a['album']}[/bold]\n"
-        f"Genre    : [cyan]{a['genre']}[/cyan]\n"
-        f"Cover URL: [dim]{a['cover_url']}[/dim]\n"
-        f"Issue    : [yellow]{a.get('issue') or '—'}[/yellow]",
-        title=f"[bold]Album #{a['id']}[/bold]",
-        expand=False,
-    ))
-
+edited = st.data_editor(
+    df_edit,
+    column_config={
+        "🗑":        st.column_config.CheckboxColumn("🗑",       width=40),
+        "id":        st.column_config.NumberColumn(  "ID",       disabled=True, width=60),
+        "cover_url": st.column_config.ImageColumn(   "Cover",    width=80),
+        "artist":    st.column_config.TextColumn(    "Artiste",  width=200),
+        "album":     st.column_config.TextColumn(    "Album",    width=280),
+        "genre":     st.column_config.SelectboxColumn("Genre",   options=["FR", "US"], width=80),
+        "issue":     st.column_config.TextColumn(    "Issue",    disabled=True, width=140),
+    },
+    hide_index=True,
+    use_container_width=True,
+    num_rows="fixed",
+)
 
 # ── Actions ───────────────────────────────────────────────────────────────────
+st.divider()
+col1, col2, col3, col4 = st.columns([1.4, 1.4, 1.4, 1.4])
 
-def action_edit(sb, album):
-    show_album_detail(album)
-    console.print("\n[bold]Champs modifiables :[/bold]")
-    for k, (_, label) in EDITABLE_FIELDS.items():
-        console.print(f"  [cyan]{k}[/cyan]. {label}")
-    console.print("  [dim]0. Annuler[/dim]")
-
-    updates = {}
-    while True:
-        choice = Prompt.ask("\nChamp à modifier").strip()
-        if choice == "0":
-            break
-        if choice not in EDITABLE_FIELDS:
-            console.print("[red]Choix invalide[/red]")
-            continue
-
-        field, label = EDITABLE_FIELDS[choice]
-        current = album.get(field, "")
-        new_val = Prompt.ask(f"{label}", default=current).strip()
-        if new_val != current:
-            updates[field] = new_val
-            album[field] = new_val  # mise à jour locale pour affichage
-            console.print(f"[green]↳ {label} modifié[/green]")
-
-        if not Confirm.ask("Modifier un autre champ ?", default=False):
-            break
-
-    if updates:
-        save_album(sb, album["id"], updates)
-        console.print(f"\n[bold green]✓ {len(updates)} champ(s) sauvegardé(s) en base[/bold green]")
-    else:
-        console.print("[dim]Aucune modification[/dim]")
-
-
-def action_clear(sb, album):
-    if Confirm.ask(f"Effacer le signalement de [bold]{album['artist']} — {album['album']}[/bold] ?"):
-        clear_issue(sb, album["id"])
-        console.print("[green]✓ Signalement effacé[/green]")
-
-
-def action_delete(sb, album):
-    if Confirm.ask(
-        f"[red]Supprimer définitivement[/red] [bold]{album['artist']} — {album['album']}[/bold] ?",
-        default=False,
-    ):
-        delete_album(sb, album["id"])
-        console.print("[red]✗ Album supprimé de la base[/red]")
-        return True
-    return False
-
-
-# ── Boucle principale ─────────────────────────────────────────────────────────
-
-def run():
-    sb = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-    while True:
-        console.rule("[bold cyan]COVERS SIGNALÉES[/bold cyan]")
-        albums = get_reported(sb)
-
-        if not albums:
-            console.print("\n[bold green]✓ Aucun album signalé — base propre.[/bold green]\n")
-            break
-
-        console.print(f"[dim]{len(albums)} album(s) signalé(s)[/dim]\n")
-        show_table(albums)
-
-        console.print("\n[dim]Numéro de l'album à traiter, ou [bold]q[/bold] pour quitter[/dim]")
-        choice = Prompt.ask(">").strip()
-
-        if choice.lower() == "q":
-            break
-
-        try:
-            idx = int(choice) - 1
-            assert 0 <= idx < len(albums)
-        except (ValueError, AssertionError):
-            console.print("[red]Numéro invalide[/red]")
-            continue
-
-        album = albums[idx]
-
-        console.print(f"\n[bold]{album['artist']} — {album['album']}[/bold]")
-        console.print("  [cyan]1[/cyan]. Modifier les données")
-        console.print("  [cyan]2[/cyan]. Effacer le signalement (issue → null)")
-        console.print("  [cyan]3[/cyan]. Supprimer l'album")
-        console.print("  [dim]0. Retour[/dim]")
-
-        action = Prompt.ask(">").strip()
-
-        if action == "1":
-            action_edit(sb, album)
-        elif action == "2":
-            action_clear(sb, album)
-        elif action == "3":
-            action_delete(sb, album)
-        elif action == "0":
-            continue
+# 1. Sauvegarder les modifications
+with col1:
+    if st.button("💾 Sauvegarder les modifications", type="primary", use_container_width=True):
+        sb = get_client()
+        saved = 0
+        for i, row in edited.iterrows():
+            orig = df_orig.iloc[i]
+            updates = {
+                f: row[f]
+                for f in ["artist", "album", "genre", "cover_url"]
+                if str(row[f]) != str(orig[f])
+            }
+            if updates:
+                sb.table("albums").update(updates).eq("id", int(row["id"])).execute()
+                saved += 1
+        if saved:
+            st.toast(f"✅ {saved} album(s) mis à jour", icon="✅")
+            st.cache_data.clear()
+            st.rerun()
         else:
-            console.print("[red]Action invalide[/red]")
+            st.toast("Aucune modification détectée")
 
-        console.print()
+# 2. Supprimer les lignes cochées
+with col2:
+    to_delete = edited[edited["🗑"] == True]
+    label = f"🗑️ Supprimer ({len(to_delete)} séléc.)" if len(to_delete) else "🗑️ Supprimer la sélection"
+    del_disabled = len(to_delete) == 0
 
+    if st.button(label, disabled=del_disabled, use_container_width=True):
+        st.session_state["confirm_delete"] = True
 
-if __name__ == "__main__":
-    run()
+    if st.session_state.get("confirm_delete"):
+        names = ", ".join(f"**{r['artist']} — {r['album']}**" for _, r in to_delete.iterrows())
+        st.error(f"Supprimer définitivement : {names} ?")
+        c_yes, c_no = st.columns(2)
+        if c_yes.button("✅ Confirmer", use_container_width=True):
+            sb = get_client()
+            for _, row in to_delete.iterrows():
+                sb.table("albums").delete().eq("id", int(row["id"])).execute()
+            st.session_state.pop("confirm_delete", None)
+            st.toast(f"🗑️ {len(to_delete)} album(s) supprimé(s)", icon="🗑️")
+            st.cache_data.clear()
+            st.rerun()
+        if c_no.button("✗ Annuler", use_container_width=True):
+            st.session_state.pop("confirm_delete", None)
+            st.rerun()
+
+# 3. Marquer les cochés comme résolus
+with col3:
+    res_disabled = len(to_delete) == 0
+    res_label = f"✅ Résolu ({len(to_delete)} séléc.)" if len(to_delete) else "✅ Marquer résolu"
+    if st.button(res_label, disabled=res_disabled, use_container_width=True):
+        sb = get_client()
+        for _, row in to_delete.iterrows():
+            sb.table("albums").update({"issue": None}).eq("id", int(row["id"])).execute()
+        st.toast(f"✅ {len(to_delete)} signalement(s) effacé(s)", icon="✅")
+        st.cache_data.clear()
+        st.rerun()
+
+# 4. Tout marquer résolu
+with col4:
+    if st.button("✅ Tout marquer résolu", use_container_width=True):
+        sb = get_client()
+        for a in data:
+            sb.table("albums").update({"issue": None}).eq("id", a["id"]).execute()
+        st.toast("✅ Tous les signalements effacés", icon="✅")
+        st.cache_data.clear()
+        st.rerun()
